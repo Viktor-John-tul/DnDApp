@@ -2,6 +2,15 @@ export type FormEffectType = 'damage' | 'attackBuff' | 'advantageBuff' | 'defens
 
 export type ActionType = 'main' | 'bonus' | 'reaction' | 'free';
 
+export type StatusEffectType = 'advantage' | 'disadvantage' | 'condition';
+
+export interface StatusEffect {
+  id: string;
+  name: string; // "Advantage", "Poisoned", "Stunned"
+  type: StatusEffectType;
+  description?: string;
+}
+
 export interface InventoryItem {
   id: string;
   name: string;
@@ -104,6 +113,7 @@ export interface RPGCharacter {
 
   // Combat
   customActions: CombatAction[];
+  statusEffects?: StatusEffect[];
 
   // Buffs
   activeBuff: BuffState;

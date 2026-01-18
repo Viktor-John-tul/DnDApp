@@ -36,10 +36,22 @@ export function MainStatsTab({ character, onUpdate, readOnly }: Props) {
   // Handlers
   const handleRoll = (label: string, modifier: number, requiresDisadvantage = false) => {
     if (readOnly) return;
+    
+    // Check Status Effects
+    const hasEffectAdvantage = character.statusEffects?.some(e => e.type === 'advantage');
+    const hasEffectDisadvantage = character.statusEffects?.some(e => e.type === 'disadvantage');
+
+    const hasAdv = hasEffectAdvantage;
+    const hasDis = requiresDisadvantage || hasEffectDisadvantage;
+    
+    let mode: RollMode = 'normal';
+    if(hasAdv && !hasDis) mode = 'advantage';
+    else if(!hasAdv && hasDis) mode = 'disadvantage';
+
     setActiveRoll({
       label,
       modifier,
-      mode: requiresDisadvantage ? 'disadvantage' : 'normal'
+      mode
     });
   };
 
@@ -77,6 +89,9 @@ export function MainStatsTab({ character, onUpdate, readOnly }: Props) {
       <div className="flex flex-wrap gap-2">
         <ConditionBadge label={character.breathingStyleName || "Breathing Style"} active color="orange" icon={<Wind size={12}/>} />
         {isEncumbered && <ConditionBadge label="Encumbered" active color="red" icon={<PersonStanding size={12}/>} />}
+        {character.statusEffects?.map(e => (
+             <ConditionBadge key={e.id} label={e.name} active color={e.type === 'condition' ? 'blue' : 'orange'} icon={<Zap size={12}/>} />
+        ))}
       </div>
 
       {/* Attributes Grid */}
@@ -168,7 +183,14 @@ export function MainStatsTab({ character, onUpdate, readOnly }: Props) {
             mode={activeRoll.mode} 
             modifier={activeRoll.modifier} 
             label={activeRoll.label} 
-            onComplete={() => setActiveRoll(null)} 
+            onComplete={() => {
+                 // Consume One-Time Effects
+                 const hasOneTime = character.statusEffects?.some(e => e.type === 'advantage' || e.type === 'disadvantage');
+                 if (hasOneTime) {
+                     onUpdate({ statusEffects: (character.statusEffects || []).filter(e => e.type !== 'advantage' && e.type !== 'disadvantage') });
+                 }
+                 setActiveRoll(null);
+            }} 
         />
       )}
     </div>
