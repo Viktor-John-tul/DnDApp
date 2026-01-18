@@ -10,8 +10,6 @@ import {
   query,
   where,
   getDocs,
-  orderBy,
-  limit,
   deleteDoc
 } from "firebase/firestore";
 import type { RPGCharacter } from "../types";
