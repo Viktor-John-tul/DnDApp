@@ -4,6 +4,7 @@ import { ProtectedRoute } from "./components/ProtectedRoute";
 import { LoginPage } from "./pages/LoginPage";
 import { Dashboard } from "./pages/Dashboard";
 import { CharacterCreation } from "./pages/CharacterCreation";
+import { DemonCreation } from "./pages/DemonCreation";
 import { CharacterSheet } from "./pages/CharacterSheet";
 import { DMView } from "./pages/multiplayer/DMView";
 
@@ -23,6 +24,12 @@ function App() {
           <Route path="/create" element={
             <ProtectedRoute>
               <CharacterCreation />
+            </ProtectedRoute>
+          } />
+
+          <Route path="/create-demon" element={
+            <ProtectedRoute>
+              <DemonCreation />
             </ProtectedRoute>
           } />
           

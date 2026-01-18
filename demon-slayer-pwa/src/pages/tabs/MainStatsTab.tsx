@@ -25,12 +25,12 @@ export function MainStatsTab({ character, onUpdate }: Props) {
   const [showHealth, setShowHealth] = useState(false);
   const [activeRoll, setActiveRoll] = useState<{label: string, modifier: number, mode: RollMode} | null>(null);
 
-  const isEncumbered = Calculator.isEncumbered(character.strength, character.inventory);
-  const proficiency = Calculator.getProficiencyBonus(character.level);
-  const ac = Calculator.getAC(character.dexterity);
-  const initiative = Calculator.getModifier(character.dexterity);
-  const speed = Calculator.getSpeed(isEncumbered);
-  const maxHP = Calculator.getMaxHP(character.constitution, character.level);
+  const isEncumbered = character.type === 'demon' ? false : Calculator.isEncumbered(character.strength, character.inventory);
+  const proficiency = character.customProficiency ?? Calculator.getProficiencyBonus(character.level);
+  const ac = character.customAC ?? Calculator.getAC(character.dexterity);
+  const initiative = character.customInitiative ?? Calculator.getModifier(character.dexterity);
+  const speed = character.customSpeed ?? Calculator.getSpeed(isEncumbered);
+  const maxHP = character.customMaxHP ?? Calculator.getMaxHP(character.constitution, character.level);
 
   // Handlers
   const handleRoll = (label: string, modifier: number, requiresDisadvantage = false) => {

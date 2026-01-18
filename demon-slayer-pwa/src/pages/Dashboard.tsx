@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { Plus, LogOut, Users, PlayCircle, Eye } from "lucide-react";
+import { Plus, LogOut, Users, PlayCircle, Eye, Skull, Sword } from "lucide-react";
 import { CharacterService } from "../services/characterService";
 import { GameService } from "../services/gameService";
 import type { RPGCharacter } from "../types";
@@ -12,6 +12,7 @@ export function Dashboard() {
   const [characters, setCharacters] = useState<RPGCharacter[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeSession, setActiveSession] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<'slayer' | 'demon'>('slayer');
 
   useEffect(() => {
     if (user) {
@@ -47,10 +48,14 @@ export function Dashboard() {
     }
   }
 
+  const filteredCharacters = characters.filter(c => (c.type || 'slayer') === viewMode);
+
   return (
-    <div className="min-h-screen bg-gray-100 p-4 pb-20">
+    <div className={`min-h-screen p-4 pb-20 ${viewMode === 'demon' ? 'bg-gray-950' : 'bg-gray-100'}`}>
       <header className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Slayer Corps</h1>
+        <h1 className={`text-2xl font-bold ${viewMode === 'demon' ? 'text-red-600' : 'text-gray-900'}`}>
+            {viewMode === 'demon' ? '12 Kizuki' : 'Slayer Corps'}
+        </h1>
         <div className="flex gap-2">
            <Link to="/dm" className={`p-2 rounded-full shadow-sm font-bold text-xs flex items-center gap-1 transition-colors ${activeSession ? 'bg-gray-800 text-white hover:bg-gray-700 border border-gray-700' : 'text-slayer-orange bg-white hover:bg-orange-50'}`}>
               {activeSession ? <Eye size={16} /> : <Users size={16} />} 
@@ -64,6 +69,26 @@ export function Dashboard() {
           </button>
         </div>
       </header>
+
+      {/* View Toggle */}
+      <div className="flex bg-white/10 p-1 rounded-xl mb-6 backdrop-blur-sm border border-gray-200/20">
+          <button 
+             onClick={() => setViewMode('slayer')}
+             className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-bold transition-all ${
+                 viewMode === 'slayer' ? 'bg-white text-slayer-orange shadow-sm' : 'text-gray-400 hover:text-gray-200'
+             }`}
+          >
+              <Sword size={16} /> Slayers
+          </button>
+          <button 
+             onClick={() => setViewMode('demon')}
+             className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-bold transition-all ${
+                 viewMode === 'demon' ? 'bg-red-900 text-white shadow-sm' : 'text-gray-400 hover:text-gray-200'
+             }`}
+          >
+              <Skull size={16} /> Demons
+          </button>
+      </div>
 
       {activeSession && (
         <div className="bg-gray-900 text-white rounded-xl p-4 mb-6 shadow-lg border border-gray-800 relative overflow-hidden">
@@ -92,21 +117,25 @@ export function Dashboard() {
         </div>
       ) : (
         <div className="space-y-4">
-            {characters.length === 0 && (
+            {filteredCharacters.length === 0 && (
                 <div className="text-center py-10 text-gray-400">
-                    No characters found. Start your journey!
+                    {viewMode === 'slayer' ? 'No slayers recruited.' : 'No demons summoned.'}
                 </div>
             )}
-            {characters.map(char => (
+            {filteredCharacters.map(char => (
                 <CharacterCard key={char.id} character={char} onDelete={handleDelete} />
             ))}
             
             <Link 
-            to="/create"
-            className="bg-white p-4 rounded-2xl shadow-sm border border-gray-200 flex items-center justify-center gap-2 text-slayer-orange font-bold hover:bg-orange-50 transition"
+            to={viewMode === 'slayer' ? "/create" : "/create-demon"}
+            className={`p-4 rounded-2xl shadow-sm border flex items-center justify-center gap-2 font-bold transition ${
+                viewMode === 'demon' 
+                ? 'bg-red-900 border-red-800 text-white hover:bg-red-800' 
+                : 'bg-white border-gray-200 text-slayer-orange hover:bg-orange-50'
+            }`}
             >
             <Plus size={24} />
-            Create Demon Slayer
+            {viewMode === 'slayer' ? 'Create Demon Slayer' : 'Summon Demon'}
             </Link>
         </div>
       )}

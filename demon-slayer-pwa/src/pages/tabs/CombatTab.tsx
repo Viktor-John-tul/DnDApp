@@ -17,6 +17,7 @@ interface ActiveRollState {
   mode?: 'normal' | 'advantage' | 'disadvantage';
   isSave?: boolean;
   isDamage?: boolean;
+  isHealing?: boolean;
   isBacklash?: boolean;
   isAttack?: boolean;
   diceCount?: number;
@@ -39,7 +40,9 @@ export function CombatTab({ character, onUpdate }: Props) {
   // Encumbrance
   const currentLoad = Calculator.getCurrentLoad(character.inventory || []);
   const maxLoad = Calculator.getMaxLoad(character.strength);
-  const isEncumbered = currentLoad > maxLoad;
+  const isEncumbered = character.type === 'demon' ? false : currentLoad > maxLoad;
+
+  const isDemon = character.type === 'demon';
 
   // Helper to determine best attack mod (Str vs Dex) - simplified
   const attackMod = Math.max(strMod, dexMod); 
@@ -153,6 +156,22 @@ export function CombatTab({ character, onUpdate }: Props) {
           
           onUpdate(updates);
           alert(`Buff Applied: ${form.name}!`);
+          return;
+      }
+
+      // 3. Heal Effect
+      if (form.effectType === 'heal') {
+          setTimeout(() => {
+              setActiveRoll({
+                label: `${form.name} (Healing)`,
+                modifier: 0,
+                isHealing: true,
+                diceCount: form.diceCount,
+                diceFace: form.diceFace,
+                pendingForm: form
+            });
+          }, 300);
+          return;
       }
   };
 
@@ -234,6 +253,15 @@ export function CombatTab({ character, onUpdate }: Props) {
         return;
     }
 
+    // If this was a Healing Roll
+    if (activeRoll?.isHealing) {
+        onUpdate({
+            currentHP: Math.min(Calculator.getMaxHP(character.constitution, character.level), character.currentHP + total)
+        });
+        setActiveRoll(null);
+        return;
+    }
+
     // If this was the Damage Roll
     if (activeRoll?.isDamage) {
         // Backlash Damage Logic (HP Loss + Resume Attack)
@@ -294,6 +322,7 @@ export function CombatTab({ character, onUpdate }: Props) {
     <div className="space-y-6 pb-24">
       
       {/* Stamina / Breath Engine */}
+      {!isDemon && (
       <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 relative overflow-hidden">
         {character.currentBreaths < 0 && (
             <div className="absolute top-0 left-0 w-full h-1 bg-red-500 animate-pulse" />
@@ -356,15 +385,16 @@ export function CombatTab({ character, onUpdate }: Props) {
             )}
         </div>
       </div>
+      )}
 
       {/* Techniques List */}
       <div className="space-y-3">
         <div className="flex justify-between items-center px-1">
-            <h3 className="font-bold text-gray-800">Breathing Forms</h3>
+            <h3 className="font-bold text-gray-800">{isDemon ? 'Blood Demon Arts' : 'Breathing Forms'}</h3>
             <button 
                 onClick={() => setEditingForm({
                     id: crypto.randomUUID(), 
-                    name: "New Form",
+                    name: isDemon ? "New Blood Art" : "New Form",
                     description: "",
                     requiresAttackRoll: true,
                     durationRounds: 0,
@@ -373,9 +403,9 @@ export function CombatTab({ character, onUpdate }: Props) {
                     spCost: 0,
                     effectType: 'damage'
                 })}
-                className="text-xs bg-gray-100 p-2 rounded-lg text-gray-600 hover:bg-gray-200"
+                className="text-xs bg-gray-900 text-white px-2 py-1 rounded-md font-bold"
             >
-                <Plus size={16} />
+                {isDemon ? "Add Art" : "Add Form"}
             </button>
         </div>
         

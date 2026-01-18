@@ -1,4 +1,4 @@
-export type FormEffectType = 'damage' | 'attackBuff' | 'advantageBuff' | 'defenseBuff' | 'utility';
+export type FormEffectType = 'damage' | 'attackBuff' | 'advantageBuff' | 'defenseBuff' | 'utility' | 'heal';
 
 export type ActionType = 'main' | 'bonus' | 'reaction' | 'free';
 
@@ -22,6 +22,13 @@ export interface BreathingForm {
   effectType: FormEffectType;
 }
 
+export type CharacterType = 'slayer' | 'demon';
+
+export interface BloodDemonArt extends BreathingForm {
+    // Extends BreathingForm structure for compatibility
+    // Uses 'heal' effect type for healing arts
+}
+
 export interface CombatAction {
   id: string;
   name: string;
@@ -42,12 +49,15 @@ export interface RPGCharacter {
   id?: string; // Firestore ID
   userId: string; // Owner
   name: string;
+  type?: CharacterType; // 'slayer' | 'demon'
+
   characterClass: string;
   level: number;
 
   // Stats
   strength: number;
   dexterity: number;
+
   constitution: number;
   intelligence: number;
   wisdom: number;
@@ -58,9 +68,21 @@ export interface RPGCharacter {
   proficientSavingThrows: string[];
   photoUrl: string | null;
 
+  // Manual Stats (For Demons/Custom)
+  customAC?: number;
+  customInitiative?: number;
+  customSpeed?: number;
+  customProficiency?: number;
+  customMaxHP?: number;
+
   // Demon Slayer
   breathingStyleName: string;
   breathingForms: BreathingForm[];
+
+  // Demon
+  bloodDemonArtName?: string;
+  bloodDemonArts?: BloodDemonArt[];
+  kills?: number;
 
   // Breaths
   currentBreaths: number;

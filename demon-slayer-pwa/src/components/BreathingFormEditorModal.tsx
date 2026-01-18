@@ -1,5 +1,5 @@
 import React from "react";
-import { Shield, Sword, Zap, CheckSquare, Square } from 'lucide-react';
+import { Shield, Sword, Zap, CheckSquare, Square, Heart } from 'lucide-react';
 import type { BreathingForm, FormEffectType } from "../types";
 
 interface Props {
@@ -12,6 +12,7 @@ const EFFECT_TYPES: { value: FormEffectType; label: string; icon: any }[] = [
   { value: 'damage', label: 'Damage', icon: Sword },
   { value: 'attackBuff', label: 'Attack Buff', icon: Zap },
   { value: 'advantageBuff', label: 'Advantage', icon: Shield },
+  { value: 'heal', label: 'Heal Self', icon: Heart },
 ];
 
 export function BreathingFormEditorModal({ form: initialForm, onSave, onClose }: Props) {
