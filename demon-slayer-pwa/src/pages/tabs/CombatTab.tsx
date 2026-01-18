@@ -296,7 +296,7 @@ export function CombatTab({ character, onUpdate, readOnly }: Props) {
     // If this was a Healing Roll
     if (activeRoll?.isHealing) {
         const healAmount = Number(total) || 0;
-        const maxHP = Calculator.getMaxHP(character.constitution, character.level);
+        const maxHP = character.customMaxHP ?? Calculator.getMaxHP(character.constitution, character.level);
         const newHP = Math.min(maxHP, (character.currentHP || 0) + healAmount);
         
         const updates: Partial<RPGCharacter> = {
