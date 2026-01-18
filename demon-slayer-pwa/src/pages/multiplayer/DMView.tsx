@@ -121,7 +121,8 @@ export function DMView() {
               </div>
           ) : (
              players.map(player => (
-                 <div key={player.id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                 <Link to={`/character/${player.id}`} key={player.id} className="block hover:ring-2 hover:ring-slayer-orange transition-all rounded-xl">
+                     <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                      {/* Player Header */}
                      <div className="bg-gray-50 p-3 border-b border-gray-100 flex justify-between items-center">
                          <h3 className="font-bold text-gray-800">{player.name}</h3>
@@ -159,6 +160,7 @@ export function DMView() {
                          </div>
                      </div>
                  </div>
+                 </Link>
              ))
           )}
        </div>

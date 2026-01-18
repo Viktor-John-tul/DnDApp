@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Swords, Wind, Zap, AlertTriangle, Plus, Minus, ShieldAlert } from 'lucide-react';
+import { Swords, Wind, Zap, AlertTriangle, Plus, Minus, ShieldAlert, X } from 'lucide-react';
 import type { RPGCharacter, BreathingForm } from '../../types';
 import { Calculator } from '../../services/rules';
 import { DiceRollerOverlay } from '../../components/DiceRollerOverlay';
@@ -9,6 +9,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 interface Props {
   character: RPGCharacter;
   onUpdate: (updates: Partial<RPGCharacter>) => void;
+  readOnly?: boolean;
 }
 
 interface ActiveRollState {
@@ -26,11 +27,17 @@ interface ActiveRollState {
   pendingRefCost?: number;
 }
 
-export function CombatTab({ character, onUpdate }: Props) {
+export function CombatTab({ character, onUpdate, readOnly }: Props) {
   const [activeRoll, setActiveRoll] = useState<ActiveRollState | null>(null);
   const [showOverdraftWarning] = useState(false);
   const [editingForm, setEditingForm] = useState<BreathingForm | null>(null);
   const [pendingHitConfirmForm, setPendingHitConfirmForm] = useState<BreathingForm | null>(null);
+  const [healingConfig, setHealingConfig] = useState<{
+      show: boolean;
+      pendingForm?: BreathingForm;
+      count: number;
+      face: number;
+  }>({ show: false, count: 1, face: 8 });
 
   const conMod = Calculator.getModifier(character.constitution);
   const strMod = Calculator.getModifier(character.strength);
@@ -161,6 +168,16 @@ export function CombatTab({ character, onUpdate }: Props) {
 
       // 3. Heal Effect
       if (form.effectType === 'heal') {
+          if (isDemon) {
+              setHealingConfig({
+                  show: true,
+                  pendingForm: form,
+                  count: form.diceCount || 1,
+                  face: form.diceFace || 8
+              });
+              return;
+          }
+
           setTimeout(() => {
               setActiveRoll({
                 label: `${form.name} (Healing)`,
@@ -391,6 +408,7 @@ export function CombatTab({ character, onUpdate }: Props) {
       <div className="space-y-3">
         <div className="flex justify-between items-center px-1">
             <h3 className="font-bold text-gray-800">{isDemon ? 'Blood Demon Arts' : 'Breathing Forms'}</h3>
+            {!readOnly && (
             <button 
                 onClick={() => setEditingForm({
                     id: crypto.randomUUID(), 
@@ -407,6 +425,7 @@ export function CombatTab({ character, onUpdate }: Props) {
             >
                 {isDemon ? "Add Art" : "Add Form"}
             </button>
+            )}
         </div>
         
         {character.breathingForms.length === 0 ? (
@@ -433,8 +452,9 @@ export function CombatTab({ character, onUpdate }: Props) {
                             <span className="block font-bold text-cyan-600">{form.spCost}</span>
                         </div>
                         <button 
-                            onClick={() => handleTechniqueRoll(form)}
-                            className="bg-gray-900 text-white p-2.5 rounded-xl shadow-lg shadow-gray-200 active:scale-95 transition-all"
+                            onClick={() => !readOnly && handleTechniqueRoll(form)}
+                            disabled={readOnly}
+                            className={`p-2.5 rounded-xl shadow-lg transition-all ${readOnly ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-gray-900 text-white shadow-gray-200 active:scale-95'}`}
                         >
                             <Swords size={18} />
                         </button>
@@ -469,12 +489,13 @@ export function CombatTab({ character, onUpdate }: Props) {
             <h3 className="font-bold text-gray-800">Basic Actions</h3>
          </div>
          <button 
-            onClick={() => setActiveRoll({
+            onClick={() => !readOnly && setActiveRoll({
                 label: "Unarmed Strike", 
                 modifier: strMod + proficiency,
                 mode: isEncumbered ? 'disadvantage' : 'normal'
             })}
-            className="w-full bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex justify-between items-center active:bg-gray-50"
+            disabled={readOnly}
+            className={`w-full p-4 rounded-xl shadow-sm border border-gray-100 flex justify-between items-center ${readOnly ? 'bg-gray-50 opacity-50 cursor-not-allowed' : 'bg-white active:bg-gray-50'}`}
          >
             <div className="flex items-center gap-3">
                 <div className="bg-gray-100 p-2 rounded-lg">
@@ -519,6 +540,88 @@ export function CombatTab({ character, onUpdate }: Props) {
                 </div>
             </motion.div>
         </div>
+      )}
+
+      {healingConfig.show && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <motion.div 
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl text-center"
+            >
+                <div className="flex justify-between items-center mb-4">
+                    <h3 className="font-bold text-xl text-gray-900">Configure Healing</h3>
+                    <button onClick={() => setHealingConfig({...healingConfig, show: false})} className="text-gray-400 hover:text-gray-600">
+                        <X size={24} />
+                    </button>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4 mb-6">
+                    <div>
+                        <label className="block text-xs font-bold text-gray-400 mb-1 uppercase tracking-wider">Dice Count</label>
+                        <div className="flex items-center bg-gray-50 rounded-xl p-1 border border-gray-200">
+                             <button 
+                                onClick={() => setHealingConfig(prev => ({...prev, count: Math.max(1, prev.count - 1)}))}
+                                className="w-10 h-10 flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-200 rounded-lg transition-colors"
+                             >
+                                 <Minus size={18} />
+                             </button>
+                             <div className="flex-1 text-center font-mono text-xl text-gray-900 font-bold">{healingConfig.count}</div>
+                             <button 
+                                onClick={() => setHealingConfig(prev => ({...prev, count: prev.count + 1}))}
+                                className="w-10 h-10 flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-200 rounded-lg transition-colors"
+                             >
+                                 <Plus size={18} />
+                             </button>
+                        </div>
+                    </div>
+                    <div>
+                         <label className="block text-xs font-bold text-gray-400 mb-1 uppercase tracking-wider">Dice Type</label>
+                         <select 
+                            value={healingConfig.face}
+                            onChange={(e) => setHealingConfig(prev => ({...prev, face: parseInt(e.target.value)}))}
+                            className="w-full h-[50px] bg-gray-50 border-gray-200 text-gray-900 rounded-xl focus:ring-2 focus:ring-slayer-orange focus:border-transparent px-3 font-bold"
+                         >
+                             <option value="4">d4</option>
+                             <option value="6">d6</option>
+                             <option value="8">d8</option>
+                             <option value="10">d10</option>
+                             <option value="12">d12</option>
+                             <option value="20">d20</option>
+                         </select>
+                    </div>
+                </div>
+
+                <div className="bg-gray-50 rounded-xl p-4 mb-6">
+                   <div className="text-sm text-gray-500 mb-1">Rolling</div>
+                   <div className="text-2xl font-bold text-slayer-orange">
+                       {healingConfig.count}d{healingConfig.face}
+                   </div>
+                </div>
+
+                <button 
+                     onClick={() => {
+                         const { pendingForm, count, face } = healingConfig;
+                         setHealingConfig({...healingConfig, show: false});
+                         
+                         setTimeout(() => {
+                            setActiveRoll({
+                                label: `${pendingForm?.name || 'Effect'} (Healing)`,
+                                modifier: 0,
+                                isHealing: true,
+                                diceCount: count,
+                                diceFace: face,
+                                pendingForm: pendingForm
+                            });
+                         }, 100);
+                     }}
+                    className="w-full py-3 px-4 rounded-xl bg-slayer-orange text-white font-bold hover:bg-orange-600 active:scale-95 transition-all shadow-lg shadow-orange-200 flex items-center justify-center gap-2"
+                >
+                    <Plus size={20} />
+                    <span>Roll Healing</span>
+                </button>
+            </motion.div>
+          </div>
       )}
 
       {activeRoll && (

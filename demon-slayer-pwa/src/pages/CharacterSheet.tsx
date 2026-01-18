@@ -58,8 +58,13 @@ export function CharacterSheet() {
     }
   };
 
+  const isReadOnly = (character && user) 
+      ? (user.uid !== character.userId && character.type !== 'demon') 
+      : true;
+
   const handleUpdate = (updates: Partial<RPGCharacter>) => {
     if (!character || !id) return;
+    if (isReadOnly) return;
     
     // 1. Optimistic Update
     const updatedChar = { ...character, ...updates };
@@ -118,7 +123,9 @@ export function CharacterSheet() {
                 <ChevronLeft size={24} />
             </button>
             <div className="flex-1 min-w-0">
-                <h1 className="font-bold text-gray-900 truncate">{character.name}</h1>
+                <h1 className="font-bold text-gray-900 truncate">
+                    {character.name} {isReadOnly && <span className="ml-2 text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded border border-gray-200 uppercase font-bold tracking-wider">View Only</span>}
+                </h1>
                 <p className="text-xs text-gray-500 truncate">
                     Lv.{character.level} {character.characterClass} • {character.breathingStyleName || "No Breath"}
                 </p>
@@ -134,10 +141,10 @@ export function CharacterSheet() {
 
         {/* Content Area */}
         <main className="flex-1 overflow-y-auto p-4 custom-scrollbar">
-            {activeTab === 'stats' && <MainStatsTab character={character} onUpdate={handleUpdate} />}
-            {activeTab === 'combat' && <CombatTab character={character} onUpdate={handleUpdate} />}
-            {activeTab === 'inventory' && <InventoryTab character={character} onUpdate={handleUpdate} />}
-            {activeTab === 'bio' && <BioTab character={character} onUpdate={handleUpdate} />}
+            {activeTab === 'stats' && <MainStatsTab character={character} onUpdate={handleUpdate} readOnly={isReadOnly} />}
+            {activeTab === 'combat' && <CombatTab character={character} onUpdate={handleUpdate} readOnly={isReadOnly} />}
+            {activeTab === 'inventory' && <InventoryTab character={character} onUpdate={handleUpdate} readOnly={isReadOnly} />}
+            {activeTab === 'bio' && <BioTab character={character} onUpdate={handleUpdate} readOnly={isReadOnly} />}
         </main>
 
         {/* Bottom Navigation */}
