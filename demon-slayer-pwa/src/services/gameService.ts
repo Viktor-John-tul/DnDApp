@@ -1,5 +1,19 @@
 import { db } from "./firebase";
-import { doc, setDoc, updateDoc, getDoc, onSnapshot, deleteField } from "firebase/firestore";
+import { 
+  doc, 
+  setDoc, 
+  updateDoc, 
+  getDoc, 
+  onSnapshot, 
+  deleteField,
+  collection,
+  query,
+  where,
+  getDocs,
+  orderBy,
+  limit,
+  deleteDoc
+} from "firebase/firestore";
 import type { RPGCharacter } from "../types";
 
 export interface GameSession {
@@ -23,6 +37,51 @@ export const GameService = {
   // Generate a random 6-character code
   generateCode: () => {
     return Math.random().toString(36).substring(2, 8).toUpperCase();
+  },
+
+  // Find an active session for the DM
+  resumeSession: async (dmId: string): Promise<string | null> => {
+    try {
+      // Find sessions by this DM
+      const q = query(collection(db, "sessions"), where("dmId", "==", dmId));
+      const querySnapshot = await getDocs(q);
+      
+      if (querySnapshot.empty) return null;
+
+      // Filter for recent sessions (e.g., created or active within last 3 hours)
+      // Note: A real implementation might update a 'lastActive' timestamp on every action.
+      // For now, we'll check if the session is reasonably recent (e.g. 24 hours) 
+      // AND we rely on the specific "End Session" button to clean up old ones.
+      // But adhering to the user's "3 hour" request:
+      const THREE_HOURS_MS = 3 * 60 * 60 * 1000;
+      const now = Date.now();
+      
+      const sessions = querySnapshot.docs.map(doc => ({
+        code: doc.id,
+        ...doc.data()
+      })) as GameSession[];
+
+      // Sort by creation time descending (newest first)
+      sessions.sort((a, b) => b.createdAt - a.createdAt);
+      
+      const newestSession = sessions[0];
+      
+      // If the session is older than 3 hours, strictly speaking we should ignore it
+      // UNLESS we add a heartbeat. For now, let's implement the 3 hour cutoff based on creation.
+      if (now - newestSession.createdAt < THREE_HOURS_MS) {
+        return newestSession.code;
+      }
+      
+      return null;
+    } catch (error) {
+      console.error("Error resuming session:", error);
+      return null;
+    }
+  },
+
+  // End a session
+  endSession: async (code: string) => {
+    await deleteDoc(doc(db, "sessions", code));
   },
 
   // Host a new game

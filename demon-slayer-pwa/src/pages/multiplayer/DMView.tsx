@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { GameService } from "../../services/gameService";
 import type { GameSession } from "../../services/gameService";
-import { Copy, Users, Heart, Wind } from 'lucide-react';
+import { Copy, Users, Heart, Wind, Power, ArrowLeft } from 'lucide-react';
 
 export function DMView() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [sessionCode, setSessionCode] = useState<string | null>(null);
   const [session, setSession] = useState<GameSession | null>(null);
   const [loading, setLoading] = useState(true);
@@ -15,10 +17,17 @@ export function DMView() {
     const initGame = async () => {
       if (!user) return;
       try {
-        const code = await GameService.createGame(user.uid);
-        setSessionCode(code);
+        // Try to resume an existing session first
+        const existingCode = await GameService.resumeSession(user.uid);
+        if (existingCode) {
+            setSessionCode(existingCode);
+        } else {
+            // Only create if none exists
+            const code = await GameService.createGame(user.uid);
+            setSessionCode(code);
+        }
       } catch (err) {
-        console.error("Failed to create game", err);
+        console.error("Failed to create/resume game", err);
       }
     };
     initGame();
@@ -29,19 +38,38 @@ export function DMView() {
     if (!sessionCode) return;
     
     const unsubscribe = GameService.subscribeToSession(sessionCode, (data) => {
+      if (!data) {
+          // Session was deleted remotely
+          setSessionCode(null);
+          setSession(null);
+          navigate("/"); // Go back to dashboard if session ends
+          return;
+      }
       setSession(data);
       setLoading(false);
     });
 
     return () => unsubscribe();
-  }, [sessionCode]);
+  }, [sessionCode, navigate]);
+
+  const handleEndSession = async () => {
+      if (!sessionCode || !confirm("Are you sure you want to end this session? All players will be disconnected.")) return;
+      
+      try {
+          await GameService.endSession(sessionCode);
+          setSessionCode(null);
+          navigate("/");
+      } catch (err) {
+          console.error(err);
+      }
+  };
 
   if (loading || !sessionCode) {
     return (
       <div className="flex h-screen items-center justify-center bg-gray-50">
         <div className="text-center">
             <div className="animate-spin w-8 h-8 border-4 border-slayer-orange border-t-transparent rounded-full mx-auto mb-4"></div>
-            <p className="text-gray-500 font-bold">Creating Session...</p>
+            <p className="text-gray-500 font-bold">Accessing Session...</p>
         </div>
       </div>
     );
@@ -54,8 +82,21 @@ export function DMView() {
        {/* Header / HUD */}
        <div className="bg-gray-900 text-white p-4 rounded-xl shadow-lg mb-6 sticky top-2 z-10">
           <div className="flex justify-between items-center mb-2">
-              <h1 className="font-bold text-lg">DM Overwatch</h1>
-              <div className="flex items-center gap-2 bg-gray-800 px-3 py-1.5 rounded-lg border border-gray-700">
+              <div className="flex items-center gap-2">
+                <Link to="/" className="text-gray-400 hover:text-white"><ArrowLeft size={20}/></Link>
+                <h1 className="font-bold text-lg">DM Overwatch</h1>
+              </div>
+              
+              <button 
+                onClick={handleEndSession}
+                className="text-red-400 hover:text-red-300 flex items-center gap-1 text-xs font-bold border border-red-900 bg-red-900/20 px-2 py-1 rounded"
+              >
+                  <Power size={12} /> END
+              </button>
+          </div>
+
+          <div className="flex justify-between items-end">
+            <div className="flex items-center gap-2 bg-gray-800 px-3 py-1.5 rounded-lg border border-gray-700">
                   <span className="text-xs text-gray-400 uppercase tracking-widest">Join Code</span>
                   <span className="font-mono font-bold text-slayer-orange text-lg tracking-wider">{sessionCode}</span>
                   <button 
@@ -64,11 +105,11 @@ export function DMView() {
                   >
                       <Copy size={14} />
                   </button>
-              </div>
-          </div>
-          <div className="flex items-center gap-2 text-gray-400 text-sm">
-              <Users size={16} />
-              <span>{players.length} Players Connected</span>
+            </div>
+            <div className="flex items-center gap-2 text-gray-400 text-sm">
+                <Users size={16} />
+                <span>{players.length} Players</span>
+            </div>
           </div>
        </div>
 
