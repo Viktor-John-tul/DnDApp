@@ -32,7 +32,6 @@ export function CombatTab({ character, onUpdate, readOnly }: Props) {
   const [showOverdraftWarning] = useState(false);
   const [editingForm, setEditingForm] = useState<BreathingForm | null>(null);
   const [pendingHitConfirmForm, setPendingHitConfirmForm] = useState<BreathingForm | null>(null);
-  const [showEffectTable, setShowEffectTable] = useState(false);
   const [healingConfig, setHealingConfig] = useState<{
       show: boolean;
       pendingForm?: BreathingForm;
@@ -53,20 +52,10 @@ export function CombatTab({ character, onUpdate, readOnly }: Props) {
   const isDemon = character.type === 'demon';
 
   // Helper: Status Effects
-  const addEffect = (name: string, type: StatusEffect['type']) => {
-      const newEffect: StatusEffect = {
-          id: crypto.randomUUID(),
-          name,
-          type
-      };
-      onUpdate({ statusEffects: [...(character.statusEffects || []), newEffect] });
-      setShowEffectTable(false);
-  };
-
   const removeEffect = (id: string) => {
       onUpdate({ statusEffects: (character.statusEffects || []).filter(e => e.id !== id) });
   };
-
+  
   // Helper to determine best attack mod (Str vs Dex) - simplified
   const attackMod = Math.max(strMod, dexMod); 
 
@@ -374,14 +363,6 @@ export function CombatTab({ character, onUpdate, readOnly }: Props) {
                 <button onClick={() => removeEffect(effect.id)} className="hover:bg-black/5 rounded p-0.5"><X size={12}/></button>
             </div>
         ))}
-        
-        <button 
-            onClick={() => setShowEffectTable(true)}
-            className="flex items-center gap-1 bg-gray-800 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-gray-700 shadow-sm shadow-gray-200 active:scale-95 transition-all"
-        >
-            <Sparkles size={12} />
-            Add Effect
-        </button>
       </div>
 
       {/* Stamina / Breath Engine */}
@@ -682,51 +663,6 @@ export function CombatTab({ character, onUpdate, readOnly }: Props) {
                     <Plus size={20} />
                     <span>Roll Healing</span>
                 </button>
-            </motion.div>
-          </div>
-      )}
-
-      {showEffectTable && (
-          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-            <motion.div 
-                initial={{ scale: 0.9, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl"
-            >
-                <div className="flex justify-between items-center mb-4">
-                    <h3 className="font-bold text-xl text-gray-900">Add Status Effect</h3>
-                    <button onClick={() => setShowEffectTable(false)} className="text-gray-400 hover:text-gray-600">
-                        <X size={24} />
-                    </button>
-                </div>
-
-                <div className="space-y-2 mb-6 overflow-y-auto max-h-[60vh] custom-scrollbar">
-                    <button onClick={() => addEffect("Advantage (Next Roll)", "advantage")} className="w-full text-left px-4 py-3 bg-blue-50 hover:bg-blue-100 rounded-xl font-bold text-blue-800 flex justify-between items-center group transition-colors">
-                        <span>Advantage</span>
-                        <Plus size={16} className="opacity-0 group-hover:opacity-100 transition-opacity"/>
-                    </button>
-                    <button onClick={() => addEffect("Disadvantage (Next Roll)", "disadvantage")} className="w-full text-left px-4 py-3 bg-red-50 hover:bg-red-100 rounded-xl font-bold text-red-800 flex justify-between items-center group transition-colors">
-                        <span>Disadvantage</span>
-                         <Plus size={16} className="opacity-0 group-hover:opacity-100 transition-opacity"/>
-                    </button>
-                    <div className="h-px bg-gray-100 my-2" />
-                     <button onClick={() => addEffect("Poisoned", "condition")} className="w-full text-left px-4 py-3 bg-purple-50 hover:bg-purple-100 rounded-xl font-bold text-purple-800 flex justify-between items-center group transition-colors">
-                        <span>Poisoned</span>
-                         <Plus size={16} className="opacity-0 group-hover:opacity-100 transition-opacity"/>
-                    </button>
-                    <button onClick={() => addEffect("Stunned", "condition")} className="w-full text-left px-4 py-3 bg-yellow-50 hover:bg-yellow-100 rounded-xl font-bold text-yellow-800 flex justify-between items-center group transition-colors">
-                        <span>Stunned</span>
-                         <Plus size={16} className="opacity-0 group-hover:opacity-100 transition-opacity"/>
-                    </button>
-                    <button onClick={() => addEffect("Restrained", "condition")} className="w-full text-left px-4 py-3 bg-gray-50 hover:bg-gray-100 rounded-xl font-bold text-gray-800 flex justify-between items-center group transition-colors">
-                        <span>Restrained</span>
-                         <Plus size={16} className="opacity-0 group-hover:opacity-100 transition-opacity"/>
-                    </button>
-                     <button onClick={() => addEffect("Unconscious", "condition")} className="w-full text-left px-4 py-3 bg-black hover:bg-gray-800 rounded-xl font-bold text-white flex justify-between items-center group transition-colors">
-                        <span>Unconscious</span>
-                         <Plus size={16} className="opacity-0 group-hover:opacity-100 transition-opacity"/>
-                    </button>
-                </div>
             </motion.div>
           </div>
       )}

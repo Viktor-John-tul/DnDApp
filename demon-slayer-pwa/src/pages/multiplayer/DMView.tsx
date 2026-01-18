@@ -2,8 +2,20 @@ import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { GameService } from "../../services/gameService";
+import { CharacterService } from "../../services/characterService";
 import type { GameSession } from "../../services/gameService";
-import { Copy, Users, Heart, Wind, Power, ArrowLeft } from 'lucide-react';
+import type { StatusEffect, RPGCharacter } from "../../types";
+import { Copy, Users, Heart, Wind, Power, ArrowLeft, Sparkles, CheckSquare, Square } from 'lucide-react';
+
+const COMMON_EFFECTS = [
+    { name: "Advantage", type: "advantage" },
+    { name: "Disadvantage", type: "disadvantage" },
+    { name: "Poisoned", type: "condition" },
+    { name: "Stunned", type: "condition" },
+    { name: "Restrained", type: "condition" },
+    { name: "Unconscious", type: "condition" },
+    { name: "Blinded", type: "condition" },
+];
 
 export function DMView() {
   const { user } = useAuth();
@@ -11,6 +23,11 @@ export function DMView() {
   const [sessionCode, setSessionCode] = useState<string | null>(null);
   const [session, setSession] = useState<GameSession | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // DM Tools State
+  const [selectedEffect, setSelectedEffect] = useState<string | null>(null);
+  const [targetIds, setTargetIds] = useState<Set<string>>(new Set());
+  const [applyingEffect, setApplyingEffect] = useState(false);
 
   // Initialize Game Session
   useEffect(() => {
@@ -64,6 +81,47 @@ export function DMView() {
       }
   };
 
+  const handleApplyEffect = async () => {
+      if (!selectedEffect || targetIds.size === 0) return;
+      setApplyingEffect(true);
+
+      const template = COMMON_EFFECTS.find(e => e.name === selectedEffect);
+      if (!template) return;
+
+      try {
+          const promises = Array.from(targetIds).map(async (charId) => {
+              const char = await CharacterService.get(charId);
+              if (!char) return;
+
+              const newEffect: StatusEffect = {
+                  id: crypto.randomUUID(),
+                  name: template.name,
+                  type: template.type as any
+              };
+              
+              const currentEffects = char.statusEffects || [];
+              await CharacterService.update(charId, { statusEffects: [...currentEffects, newEffect] });
+          });
+
+          await Promise.all(promises);
+          alert(`Applied ${selectedEffect} to ${targetIds.size} players.`);
+          setTargetIds(new Set()); // Clear selection
+          setSelectedEffect(null);
+      } catch (error) {
+          console.error("Failed to apply effects", error);
+          alert("Error applying effects");
+      } finally {
+          setApplyingEffect(false);
+      }
+  };
+
+  const toggleTarget = (id: string) => {
+      const newSet = new Set(targetIds);
+      if (newSet.has(id)) newSet.delete(id);
+      else newSet.add(id);
+      setTargetIds(newSet);
+  };
+
   if (loading || !sessionCode) {
     return (
       <div className="flex h-screen items-center justify-center bg-gray-50">
@@ -113,6 +171,35 @@ export function DMView() {
           </div>
        </div>
 
+       {/* DM Tools Panel */}
+       <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 mb-6">
+           <h3 className="font-bold text-gray-800 mb-3 flex items-center gap-2"><Sparkles size={18} className="text-slayer-orange"/> Apply Status Effect</h3>
+           <div className="flex flex-wrap gap-2 mb-4">
+               {COMMON_EFFECTS.map(effect => (
+                   <button
+                       key={effect.name}
+                       onClick={() => setSelectedEffect(effect.name)}
+                       className={`px-3 py-1.5 rounded-lg text-sm font-bold border transition-all ${selectedEffect === effect.name ? 'bg-slayer-orange text-white border-slayer-orange' : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100'}`}
+                   >
+                       {effect.name}
+                   </button>
+               ))}
+           </div>
+           
+           <div className="flex items-center justify-between bg-gray-50 p-3 rounded-lg border border-gray-100">
+               <span className="text-sm font-bold text-gray-500">
+                   {targetIds.size === 0 ? "Select players below..." : `${targetIds.size} player(s) selected`}
+               </span>
+               <button 
+                  onClick={handleApplyEffect}
+                  disabled={!selectedEffect || targetIds.size === 0 || applyingEffect}
+                  className={`px-4 py-2 rounded-lg font-bold text-sm transition-all ${(!selectedEffect || targetIds.size === 0) ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-gray-900 text-white hover:bg-black shadow-lg shadow-gray-300'}`}
+               >
+                   {applyingEffect ? "Applying..." : "Apply Effect"}
+               </button>
+           </div>
+       </div>
+
        {/* Players Grid */}
        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {players.length === 0 ? (
@@ -121,16 +208,26 @@ export function DMView() {
               </div>
           ) : (
              players.map(player => (
-                 <Link to={`/character/${player.id}`} key={player.id} className="block hover:ring-2 hover:ring-slayer-orange transition-all rounded-xl">
+                 <div key={player.id} className={`relative block transition-all rounded-xl ${targetIds.has(player.id) ? 'ring-2 ring-slayer-orange transform scale-[1.02]' : 'hover:ring-1 hover:ring-gray-300'}`}>
                      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                      {/* Player Header */}
-                     <div className="bg-gray-50 p-3 border-b border-gray-100 flex justify-between items-center">
-                         <h3 className="font-bold text-gray-800">{player.name}</h3>
-                         <span className="text-xs font-bold bg-gray-200 text-gray-600 px-2 py-1 rounded">Lvl {player.level}</span>
+                     <div className="bg-gray-50 p-3 border-b border-gray-100 flex justify-between items-center cursor-pointer" onClick={() => toggleTarget(player.id)}>
+                         <div className="flex items-center gap-3">
+                             <div className={`text-slayer-orange transition-all ${targetIds.has(player.id) ? 'opacity-100' : 'opacity-30'}`}>
+                                 {targetIds.has(player.id) ? <CheckSquare size={20} fill="currentColor" className="text-white bg-slayer-orange rounded"/> : <Square size={20} className="text-gray-300"/>}
+                             </div>
+                             <h3 className="font-bold text-gray-800">{player.name}</h3>
+                         </div>
+                         <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold bg-gray-200 text-gray-600 px-2 py-1 rounded">Lvl {player.level}</span>
+                            <Link to={`/character/${player.id}`} className="p-1.5 bg-white border border-gray-200 rounded-lg text-gray-400 hover:text-slayer-orange hover:border-slayer-orange transition-colors">
+                                <ArrowLeft size={14} className="rotate-180" />
+                            </Link>
+                         </div>
                      </div>
 
                      {/* Stats */}
-                     <div className="p-4 space-y-4">
+                     <div className="p-4 space-y-4" onClick={() => toggleTarget(player.id)}>
                          {/* HP */}
                          <div>
                              <div className="flex justify-between text-xs font-bold text-gray-500 mb-1">

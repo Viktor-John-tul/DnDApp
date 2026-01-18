@@ -39,24 +39,20 @@ export function CharacterSheet() {
 
   useEffect(() => {
     if (!id || !user) return;
-    loadCharacter();
-  }, [id, user]);
-
-  const loadCharacter = async () => {
-    try {
-        if (!id) return;
-        const char = await CharacterService.get(id);
+    
+    // Subscribe to realtime updates
+    const unsubscribe = CharacterService.subscribe(id, (char) => {
         if (char) {
             setCharacter(char);
+            setLoading(false);
         } else {
-            navigate('/dashboard'); // Not found
+             // Deleted or not found
+             navigate('/dashboard');
         }
-    } catch (error) {
-        console.error("Failed to load character", error);
-    } finally {
-        setLoading(false);
-    }
-  };
+    });
+
+    return () => unsubscribe();
+  }, [id, user]);
 
   const isReadOnly = (character && user) 
       ? (user.uid !== character.userId && character.type !== 'demon') 

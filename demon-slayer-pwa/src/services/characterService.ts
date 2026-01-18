@@ -144,5 +144,22 @@ export const CharacterService = {
   async delete(id: string) {
     const docRef = doc(db, COLLECTION, id);
     await deleteDoc(docRef);
+  },
+
+  subscribe(id: string, callback: (char: RPGCharacter | null) => void) {
+      if (id === 'mock_char_1' || id.startsWith('mock_')) {
+          callback(MOCK_CHARACTER);
+          return () => {};
+      }
+      
+      const docRef = doc(db, COLLECTION, id);
+      const unsubscribe = onSnapshot(docRef, (doc) => {
+          if (doc.exists()) {
+              callback({ id: doc.id, ...doc.data() } as RPGCharacter);
+          } else {
+              callback(null);
+          }
+      });
+      return unsubscribe;
   }
 };
