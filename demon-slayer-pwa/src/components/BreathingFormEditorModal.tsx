@@ -199,6 +199,47 @@ export function BreathingFormEditorModal({ form: initialForm, onSave, onClose }:
                         </div>
                     </>
                 )}
+
+                {form.effectType === 'heal' && (
+                    <>
+                         <p className="text-xs font-bold text-gray-500 mb-2">Regeneration Effect</p>
+                         <p className="text-xs text-gray-400 mb-2">Heals HP at start of turn for duration.</p>
+                         <div className="flex gap-2">
+                             <div className="flex-1">
+                                <label className="text-[10px] uppercase font-bold text-gray-400">Count</label>
+                                <input 
+                                    type="number" value={form.diceCount} 
+                                    onChange={e => setForm({...form, diceCount: Math.max(1, parseInt(e.target.value)||1)})}
+                                    className="w-full p-2 bg-white border border-gray-200 rounded-lg text-center font-bold"
+                                />
+                             </div>
+                             <div className="flex items-end pb-2 font-bold text-gray-400">d</div>
+                             <div className="flex-1">
+                                <label className="text-[10px] uppercase font-bold text-gray-400">Face</label>
+                                <select 
+                                    value={form.diceFace}
+                                    onChange={e => setForm({...form, diceFace: parseInt(e.target.value)})}
+                                    className="w-full p-2 bg-white border border-gray-200 rounded-lg text-center font-bold appearance-none"
+                                >
+                                    <option value="4">4</option>
+                                    <option value="6">6</option>
+                                    <option value="8">8</option>
+                                    <option value="10">10</option>
+                                    <option value="12">12</option>
+                                    <option value="20">20</option>
+                                </select>
+                             </div>
+                        </div>
+                        <div className="mt-2">
+                             <label className="text-[10px] uppercase font-bold text-gray-400">Duration (Rounds)</label>
+                             <input 
+                                type="number" value={form.durationRounds} 
+                                onChange={e => setForm({...form, durationRounds: parseInt(e.target.value)||0})}
+                                className="w-full p-2 bg-white border border-gray-200 rounded-lg font-bold"
+                            />
+                        </div>
+                    </>
+                )}
             </div>
 
           </div>

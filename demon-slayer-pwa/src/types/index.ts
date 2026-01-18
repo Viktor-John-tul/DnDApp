@@ -52,6 +52,7 @@ export interface BuffState {
   activeBuffDiceFace: number | null;
   activeBuffRoundsRemaining: number | null;
   isAdvantageBuff?: boolean;
+  isRegenBuff?: boolean;
 }
 
 export interface RPGCharacter {

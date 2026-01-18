@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Swords, Wind, Zap, AlertTriangle, Plus, Minus, ShieldAlert, X } from 'lucide-react';
+import { Swords, Wind, Zap, AlertTriangle, Plus, Minus, ShieldAlert, X, Heart, Shield } from 'lucide-react';
 import type { RPGCharacter, BreathingForm } from '../../types';
 import { Calculator } from '../../services/rules';
 import { DiceRollerOverlay } from '../../components/DiceRollerOverlay';
@@ -176,23 +176,30 @@ export function CombatTab({ character, onUpdate, readOnly }: Props) {
 
       // 3. Heal Effect
       if (form.effectType === 'heal') {
-          if (isDemon) {
-              setHealingConfig({
-                  show: true,
-                  pendingForm: form,
-                  count: form.diceCount || 1,
-                  face: form.diceFace || 8
-              });
+          // If duration > 0, treat as Regeneration Buff (Demon Style or otherwise)
+          if (form.durationRounds > 0) {
+              const updates: Partial<RPGCharacter> = {};
+              updates.activeBuff = {
+                  activeBuffFormID: form.id,
+                  activeBuffName: form.name,
+                  activeBuffDiceCount: form.diceCount,
+                  activeBuffDiceFace: form.diceFace,
+                  activeBuffRoundsRemaining: form.durationRounds,
+                  isRegenBuff: true
+              };
+              onUpdate(updates);
+              alert(`Regeneration Applied: ${form.name}!`);
               return;
           }
 
+          // Instant Heal (Fallback or 0 duration)
           setTimeout(() => {
               setActiveRoll({
                 label: `${form.name} (Healing)`,
                 modifier: 0,
                 isHealing: true,
-                diceCount: form.diceCount,
-                diceFace: form.diceFace,
+                diceCount: form.diceCount || 1,
+                diceFace: form.diceFace || 8,
                 pendingForm: form
             });
           }, 300);
@@ -364,6 +371,49 @@ export function CombatTab({ character, onUpdate, readOnly }: Props) {
             </div>
         ))}
       </div>
+
+      {/* Active Form Buff (Regen/Attack/Advantage) */}
+      {character.activeBuff?.activeBuffName && (character.activeBuff.activeBuffRoundsRemaining || 0) > 0 && (
+         <div className="bg-orange-50 border border-orange-200 p-3 rounded-xl mb-4 flex justify-between items-center animate-fade-in shadow-sm">
+             <div className="flex items-center gap-3">
+                 <div className="p-2 bg-white rounded-lg text-slayer-orange border border-orange-100 shadow-sm">
+                     {character.activeBuff.isRegenBuff ? <Heart size={20} /> : (character.activeBuff.isAdvantageBuff ? <Shield size={20} /> : <Zap size={20} />)}
+                 </div>
+                 <div className="min-w-0">
+                     <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Active Art Effect</p>
+                     <h3 className="font-bold text-gray-800 leading-tight truncate">{character.activeBuff.activeBuffName}</h3>
+                     <div className="flex items-center gap-1.5 mt-0.5">
+                        <span className="text-xs text-orange-600 font-bold bg-orange-100 px-1.5 py-0.5 rounded">
+                            {character.activeBuff.activeBuffRoundsRemaining} Rounds
+                        </span>
+                        {character.activeBuff.activeBuffDiceCount && !character.activeBuff.isAdvantageBuff && (
+                            <span className="text-xs text-gray-500 font-bold">
+                                ({character.activeBuff.activeBuffDiceCount}d{character.activeBuff.activeBuffDiceFace})
+                            </span>
+                        )}
+                     </div>
+                 </div>
+             </div>
+             <div>
+                {character.activeBuff.isRegenBuff && (
+                    <button 
+                        onClick={() => {
+                             setActiveRoll({
+                                label: `Regeneration`,
+                                modifier: 0,
+                                isHealing: true,
+                                diceCount: character.activeBuff.activeBuffDiceCount || 1,
+                                diceFace: character.activeBuff.activeBuffDiceFace || 6,
+                            });
+                        }}
+                        className="bg-white text-slayer-orange py-2 px-3 rounded-lg border border-orange-100 shadow-sm hover:bg-orange-50 active:scale-95 transition-all font-bold text-xs"
+                    >
+                        Roll Heal
+                    </button>
+                )}
+             </div>
+         </div>
+      )}
 
       {/* Stamina / Breath Engine */}
       {!isDemon && (
