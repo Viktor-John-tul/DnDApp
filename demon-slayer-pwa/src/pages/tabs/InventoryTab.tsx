@@ -5,9 +5,10 @@ import type { RPGCharacter, InventoryItem } from "../../types";
 interface Props {
   character: RPGCharacter;
   onUpdate: (updates: Partial<RPGCharacter>) => void;
+  readOnly?: boolean;
 }
 
-export function InventoryTab({ character, onUpdate }: Props) {
+export function InventoryTab({ character, onUpdate, readOnly }: Props) {
   const [isAdding, setIsAdding] = useState(false);
   const [newItem, setNewItem] = useState<Partial<InventoryItem>>({ name: "", quantity: 1, weight: 0 });
 
@@ -29,6 +30,7 @@ export function InventoryTab({ character, onUpdate }: Props) {
   };
 
   const updateKills = (change: number) => {
+    if (readOnly) return;
     const currentKills = character.kills || 0;
     const newKills = Math.max(0, currentKills + change);
     
@@ -67,6 +69,7 @@ export function InventoryTab({ character, onUpdate }: Props) {
   };
 
   const handleRemoveItem = (id: string) => {
+    if (readOnly) return;
     onUpdate({ inventory: character.inventory.filter(i => i.id !== id) });
   };
 
@@ -81,12 +84,12 @@ export function InventoryTab({ character, onUpdate }: Props) {
              <div className="bg-red-950 rounded-xl p-4 border border-red-900 flex flex-col items-center justify-center relative overflow-hidden">
                 <div className="absolute top-0 right-0 p-1 opacity-20"><Skull size={40} /></div>
                 <div className="flex items-center gap-3 z-10">
-                    <button onClick={() => updateKills(-1)} className="w-8 h-8 flex items-center justify-center bg-red-800 text-red-200 rounded hover:bg-red-700 font-bold"><Minus size={14}/></button>
+                    <button onClick={() => !readOnly && updateKills(-1)} className={`w-8 h-8 flex items-center justify-center bg-red-800 text-red-200 rounded font-bold ${readOnly ? 'opacity-50 cursor-not-allowed' : 'hover:bg-red-700'}`}><Minus size={14}/></button>
                     <div className="flex flex-col items-center">
                          <span className="text-3xl font-black text-red-500">{character.kills || 0}</span>
                          <span className="text-[10px] font-bold text-red-700 uppercase">Humans Devoured</span>
                     </div>
-                    <button onClick={() => updateKills(1)} className="w-8 h-8 flex items-center justify-center bg-red-600 text-white rounded hover:bg-red-500 font-bold"><Plus size={14}/></button>
+                    <button onClick={() => !readOnly && updateKills(1)} className={`w-8 h-8 flex items-center justify-center bg-red-600 text-white rounded font-bold ${readOnly ? 'opacity-50 cursor-not-allowed' : 'hover:bg-red-500'}`}><Plus size={14}/></button>
                 </div>
             </div>
         ) : (
@@ -112,12 +115,14 @@ export function InventoryTab({ character, onUpdate }: Props) {
             <h3 className="font-bold text-gray-700 flex items-center gap-2">
                 <Backpack size={16} /> Inventory
             </h3>
+            {!readOnly && (
             <button 
                 onClick={() => setIsAdding(!isAdding)}
                 className="text-xs bg-gray-900 text-white px-2 py-1 rounded-md font-bold"
             >
                 {isAdding ? "Cancel" : "Add Item"}
             </button>
+            )}
         </div>
 
         {isAdding && (
@@ -160,12 +165,14 @@ export function InventoryTab({ character, onUpdate }: Props) {
                             {item.quantity > 1 && ` • x${item.quantity}`}
                         </div>
                     </div>
+                    {!readOnly && (
                     <button 
                         onClick={() => handleRemoveItem(item.id)}
                         className="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
                     >
                         <Trash2 size={16} />
                     </button>
+                    )}
                 </div>
             ))}
         </div>

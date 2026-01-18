@@ -19,9 +19,10 @@ const ALL_SKILLS = [
 interface Props {
   character: RPGCharacter;
   onUpdate: (updates: Partial<RPGCharacter>) => void;
+  readOnly?: boolean;
 }
 
-export function MainStatsTab({ character, onUpdate }: Props) {
+export function MainStatsTab({ character, onUpdate, readOnly }: Props) {
   const [showHealth, setShowHealth] = useState(false);
   const [activeRoll, setActiveRoll] = useState<{label: string, modifier: number, mode: RollMode} | null>(null);
 
@@ -34,6 +35,7 @@ export function MainStatsTab({ character, onUpdate }: Props) {
 
   // Handlers
   const handleRoll = (label: string, modifier: number, requiresDisadvantage = false) => {
+    if (readOnly) return;
     setActiveRoll({
       label,
       modifier,
@@ -42,7 +44,7 @@ export function MainStatsTab({ character, onUpdate }: Props) {
   };
 
   const handleSurge = () => {
-    if (character.healingSurges <= 0) return;
+    if (readOnly || character.healingSurges <= 0) return;
     
     // Roll d12 + Con Mod (min 1)
     const surgeRoll = Math.floor(Math.random() * 12) + 1;
@@ -137,6 +139,7 @@ export function MainStatsTab({ character, onUpdate }: Props) {
       </div>
 
       {/* Floating Buttons: Health */}
+      {!readOnly && (
       <div className="fixed bottom-24 right-4 z-40">
         <button 
             onClick={() => setShowHealth(true)}
@@ -146,6 +149,7 @@ export function MainStatsTab({ character, onUpdate }: Props) {
             <span className="text-[10px] font-bold mt-0.5">{character.currentHP}/{maxHP}</span>
         </button>
       </div>
+      )}
 
       {/* Modals */}
       {showHealth && (

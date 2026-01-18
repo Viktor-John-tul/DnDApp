@@ -436,7 +436,7 @@ export function CombatTab({ character, onUpdate, readOnly }: Props) {
         ) : (
             character.breathingForms.map(form => (
                 <div key={form.id} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex justify-between items-center">
-                    <div className="flex-1 cursor-pointer" onClick={() => setEditingForm(form)}>
+                    <div className={`flex-1 ${!readOnly ? 'cursor-pointer' : ''}`} onClick={() => !readOnly && setEditingForm(form)}>
                         <div className="flex items-center gap-2 mb-1">
                             <h4 className="font-bold text-gray-800">{form.name}</h4>
                             <span className="text-[10px] font-bold px-1.5 py-0.5 bg-gray-100 rounded text-gray-500 uppercase">

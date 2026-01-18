@@ -5,9 +5,10 @@ import { Book, User, Save, FileText } from 'lucide-react';
 interface Props {
   character: RPGCharacter;
   onUpdate: (updates: Partial<RPGCharacter>) => void;
+  readOnly?: boolean;
 }
 
-export function BioTab({ character, onUpdate }: Props) {
+export function BioTab({ character, onUpdate, readOnly }: Props) {
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState(character);
 
@@ -24,13 +25,15 @@ export function BioTab({ character, onUpdate }: Props) {
     <div className="space-y-6 pb-24">
       <div className="flex justify-between items-center">
         <h3 className="text-lg font-bold text-gray-800">Character Details</h3>
+        {!readOnly && (
         <button 
             onClick={() => isEditing ? handleSave() : setIsEditing(true)}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-sm ${isEditing ? 'bg-black text-white' : 'bg-gray-100 text-gray-700'}`}
         >
-            {isEditing ? <Save size={16} /> : <User size={16} />}
-            {isEditing ? 'Save Changes' : 'Edit Bio'}
+            {isEditing ? <Save size={16}/> : <FileText size={16}/>}
+            {isEditing ? 'Save Changes' : 'Edit Details'}
         </button>
+        )}
       </div>
 
       <div className="space-y-4">
