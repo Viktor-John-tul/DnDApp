@@ -135,7 +135,8 @@ export function CombatTab({ character, onUpdate, readOnly }: Props) {
           mod = Math.max(strMod, dexMod); // Using same stat as attack for simplicity
 
           // Apply Active Buff if exists
-          if (character.activeBuff?.activeBuffDiceCount && (character.activeBuff.activeBuffRoundsRemaining || 0) > 0) {
+          // Prevent Regen Buffs from incorrectly adding to damage dice
+          if (character.activeBuff?.activeBuffDiceCount && !character.activeBuff.isRegenBuff && (character.activeBuff.activeBuffRoundsRemaining || 0) > 0) {
               count += character.activeBuff.activeBuffDiceCount;
               // What if face is different? "increases the amount of dice rolled". We assume same face or just add count.
               // If face is different, it's complicated. Let's assume we add dice of the form's face?
@@ -294,9 +295,28 @@ export function CombatTab({ character, onUpdate, readOnly }: Props) {
 
     // If this was a Healing Roll
     if (activeRoll?.isHealing) {
-        onUpdate({
-            currentHP: Math.min(Calculator.getMaxHP(character.constitution, character.level), character.currentHP + total)
-        });
+        const healAmount = Number(total) || 0;
+        const maxHP = Calculator.getMaxHP(character.constitution, character.level);
+        const newHP = Math.min(maxHP, (character.currentHP || 0) + healAmount);
+        
+        const updates: Partial<RPGCharacter> = {
+            currentHP: newHP
+        };
+
+        // If this was a Regen Buff Roll (Active), decrement duration
+        if (character.activeBuff?.isRegenBuff && activeRoll.label === "Regeneration") {
+             const remaining = (character.activeBuff.activeBuffRoundsRemaining || 0) - 1;
+             if (remaining <= 0) {
+                 updates.activeBuff = null; // Expire
+             } else {
+                 updates.activeBuff = {
+                     ...character.activeBuff,
+                     activeBuffRoundsRemaining: remaining
+                 };
+             }
+        }
+
+        onUpdate(updates);
         setActiveRoll(null);
         return;
     }
@@ -402,8 +422,8 @@ export function CombatTab({ character, onUpdate, readOnly }: Props) {
                                 label: `Regeneration`,
                                 modifier: 0,
                                 isHealing: true,
-                                diceCount: character.activeBuff.activeBuffDiceCount || 1,
-                                diceFace: character.activeBuff.activeBuffDiceFace || 6,
+                                diceCount: character.activeBuff?.activeBuffDiceCount || 1,
+                                diceFace: character.activeBuff?.activeBuffDiceFace || 6,
                             });
                         }}
                         className="bg-white text-slayer-orange py-2 px-3 rounded-lg border border-orange-100 shadow-sm hover:bg-orange-50 active:scale-95 transition-all font-bold text-xs"

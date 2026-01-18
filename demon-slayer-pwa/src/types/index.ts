@@ -117,7 +117,7 @@ export interface RPGCharacter {
   statusEffects?: StatusEffect[];
 
   // Buffs
-  activeBuff: BuffState;
+  activeBuff?: BuffState | null;
 
   // Bio
   age: string;
