@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { HashRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { LoginPage } from "./pages/LoginPage";
@@ -10,7 +10,7 @@ import { DMView } from "./pages/multiplayer/DMView";
 function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
+      <HashRouter>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           
@@ -38,7 +38,7 @@ function App() {
             </ProtectedRoute>
           } />
         </Routes>
-      </BrowserRouter>
+      </HashRouter>
     </AuthProvider>
   );
 }
