@@ -47,7 +47,7 @@ export function CharacterSheet() {
             setLoading(false);
         } else {
              // Deleted or not found
-             navigate('/dashboard');
+             navigate('/');
         }
     });
 
@@ -113,7 +113,7 @@ export function CharacterSheet() {
         {/* Header */}
         <header className="bg-white border-b border-gray-100 px-4 py-3 flex items-center gap-3 sticky top-0 z-30 shadow-sm">
             <button 
-                onClick={() => navigate('/dashboard')}
+                onClick={() => navigate('/')}
                 className="p-1 -ml-2 rounded-full active:bg-gray-100 text-gray-500"
             >
                 <ChevronLeft size={24} />
