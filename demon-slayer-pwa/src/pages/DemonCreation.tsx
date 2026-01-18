@@ -263,12 +263,12 @@ export function DemonCreation() {
           </div>
           
           <div className="space-y-4">
-            <StatStepper label="Strength" value={stats.str} onChange={v => handleStatChange('str', v)} max={20} color="red" />
-            <StatStepper label="Dexterity" value={stats.dex} onChange={v => handleStatChange('dex', v)} max={20} color="red" />
-            <StatStepper label="Constitution" value={stats.con} onChange={v => handleStatChange('con', v)} max={20} color="red" />
-            <StatStepper label="Intelligence" value={stats.int} onChange={v => handleStatChange('int', v)} max={20} color="red"/>
-            <StatStepper label="Wisdom" value={stats.wis} onChange={v => handleStatChange('wis', v)} max={20} color="red"/>
-            <StatStepper label="Charisma" value={stats.cha} onChange={v => handleStatChange('cha', v)} max={20} color="red"/>
+            <StatStepper title="Strength" value={stats.str} onChange={v => handleStatChange('str', v)} max={20} color="red" />
+            <StatStepper title="Dexterity" value={stats.dex} onChange={v => handleStatChange('dex', v)} max={20} color="red" />
+            <StatStepper title="Constitution" value={stats.con} onChange={v => handleStatChange('con', v)} max={20} color="red" />
+            <StatStepper title="Intelligence" value={stats.int} onChange={v => handleStatChange('int', v)} max={20} color="red"/>
+            <StatStepper title="Wisdom" value={stats.wis} onChange={v => handleStatChange('wis', v)} max={20} color="red"/>
+            <StatStepper title="Charisma" value={stats.cha} onChange={v => handleStatChange('cha', v)} max={20} color="red"/>
           </div>
         </section>
 
