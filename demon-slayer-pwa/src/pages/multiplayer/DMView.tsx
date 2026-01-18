@@ -4,7 +4,7 @@ import { useAuth } from "../../context/AuthContext";
 import { GameService } from "../../services/gameService";
 import { CharacterService } from "../../services/characterService";
 import type { GameSession } from "../../services/gameService";
-import type { StatusEffect, RPGCharacter } from "../../types";
+import type { StatusEffect } from "../../types";
 import { Copy, Users, Heart, Wind, Power, ArrowLeft, Sparkles, CheckSquare, Square } from 'lucide-react';
 
 const COMMON_EFFECTS = [
@@ -257,7 +257,7 @@ export function DMView() {
                          </div>
                      </div>
                  </div>
-                 </Link>
+                 </div>
              ))
           )}
        </div>

@@ -8,7 +8,8 @@ import {
   getDocs, 
   query, 
   where,
-  serverTimestamp
+  serverTimestamp,
+  onSnapshot
 } from "firebase/firestore";
 import { db } from "./firebase";
 import type { RPGCharacter } from "../types";
