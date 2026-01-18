@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Swords, Wind, Zap, AlertTriangle, Plus, Minus, ShieldAlert, X, Sparkles, Skull } from 'lucide-react';
+import { Swords, Wind, Zap, AlertTriangle, Plus, Minus, ShieldAlert, X, Sparkles } from 'lucide-react';
 import type { RPGCharacter, BreathingForm, StatusEffect } from '../../types';
 import { Calculator } from '../../services/rules';
 import { DiceRollerOverlay } from '../../components/DiceRollerOverlay';
