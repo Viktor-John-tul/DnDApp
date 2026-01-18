@@ -1,0 +1,46 @@
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { AuthProvider } from "./context/AuthContext";
+import { ProtectedRoute } from "./components/ProtectedRoute";
+import { LoginPage } from "./pages/LoginPage";
+import { Dashboard } from "./pages/Dashboard";
+import { CharacterCreation } from "./pages/CharacterCreation";
+import { CharacterSheet } from "./pages/CharacterSheet";
+import { DMView } from "./pages/multiplayer/DMView";
+
+function App() {
+  return (
+    <AuthProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          
+          <Route path="/" element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/create" element={
+            <ProtectedRoute>
+              <CharacterCreation />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/dm" element={
+            <ProtectedRoute>
+              <DMView />
+            </ProtectedRoute>
+          } />
+
+          <Route path="/character/:id" element={
+            <ProtectedRoute>
+              <CharacterSheet />
+            </ProtectedRoute>
+          } />
+        </Routes>
+      </BrowserRouter>
+    </AuthProvider>
+  );
+}
+
+export default App;
