@@ -118,7 +118,7 @@ export const GameService = {
     const playerData: PlayerSyncData = {
       id: charId,
       name: character.name,
-      type: character.type,
+      ...(character.type ? { type: character.type } : {}),
       currentHP: character.currentHP,
       maxHP: character.maxHP || character.currentHP,
       currentBreaths: character.currentBreaths,
