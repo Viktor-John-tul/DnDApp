@@ -74,17 +74,22 @@ export function CombatTab({ character, onUpdate, readOnly, isDM, session }: Prop
   const attackMod = Math.max(strMod, dexMod); 
 
   const handleBreathRecovery = () => {
+    // Check bonus action economy in combat
+    if (combat?.isActive && !canUseAction('bonus')) {
+      showToast("Bonus action already used!", "error");
+      return;
+    }
+
     // Bonus Action: Recover All Breaths + Reset Overdraft DC to 15
     onUpdate({ 
         currentBreaths: character.maxBreaths,
         currentOverdraftDC: 15
     });
-  };
 
-  const adjustBreath = (amount: number) => {
-    const newVal = character.currentBreaths + amount;
-    // If going negative or currently negative, Overdraft mechanics apply
-    onUpdate({ currentBreaths: newVal });
+    // Consume bonus action in combat
+    if (combat?.isActive && isMyTurn) {
+      useAction('bonus');
+    }
   };
 
   const getOrdinal = (n: number) => {
@@ -287,6 +292,17 @@ export function CombatTab({ character, onUpdate, readOnly, isDM, session }: Prop
     if (total === undefined) return; // Should not happen in result state
 
     let baseUpdates: Partial<RPGCharacter> = {};
+    
+    // Decrement buff timers outside combat (each roll = 1 round)
+    if (!combat?.isActive && (character.activeBuffs || []).length > 0) {
+      const updatedBuffs = (character.activeBuffs || []).map(buff => ({
+        ...buff,
+        activeBuffRoundsRemaining: Math.max(0, (buff.activeBuffRoundsRemaining || 0) - 1)
+      })).filter(buff => (buff.activeBuffRoundsRemaining || 0) > 0);
+      
+      baseUpdates.activeBuffs = updatedBuffs;
+    }
+    
     const hasOneTime = character.statusEffects?.some(e => e.type === 'advantage' || e.type === 'disadvantage');
     if (hasOneTime && (activeRoll?.isAttack || activeRoll?.isSave || activeRoll?.label === "Unarmed Strike")) {
         baseUpdates.statusEffects = (character.statusEffects || []).filter(e => e.type !== 'advantage' && e.type !== 'disadvantage');
@@ -470,6 +486,25 @@ export function CombatTab({ character, onUpdate, readOnly, isDM, session }: Prop
       setBonusUsed(false);
     }
   }, [isMyTurn]);
+
+  // Decrement buff timers when round changes in combat
+  useEffect(() => {
+    if (!combat?.isActive || !combat.round) return;
+    
+    const activeBuffs = character.activeBuffs || [];
+    if (activeBuffs.length === 0) return;
+
+    // Decrement all active buff timers
+    const updatedBuffs = activeBuffs.map(buff => ({
+      ...buff,
+      activeBuffRoundsRemaining: Math.max(0, (buff.activeBuffRoundsRemaining || 0) - 1)
+    })).filter(buff => (buff.activeBuffRoundsRemaining || 0) > 0);
+
+    // Only update if something changed
+    if (updatedBuffs.length !== activeBuffs.filter(b => (b.activeBuffRoundsRemaining || 0) > 0).length) {
+      onUpdate({ activeBuffs: updatedBuffs });
+    }
+  }, [combat?.round]);
 
   const handleEndTurn = async () => {
     if (!session?.code || !combat) return;
@@ -681,16 +716,7 @@ export function CombatTab({ character, onUpdate, readOnly, isDM, session }: Prop
         </div>
 
         {/* Controls */}
-        <div className="flex justify-between items-center">
-            <div className="flex gap-2">
-                <button onClick={() => adjustBreath(-1)} className="p-2 bg-gray-50 rounded-lg hover:bg-gray-100 active:bg-gray-200">
-                    <Minus size={16} />
-                </button>
-                <button onClick={() => adjustBreath(1)} className="p-2 bg-gray-50 rounded-lg hover:bg-gray-100 active:bg-gray-200">
-                    <Plus size={16} />
-                </button>
-            </div>
-
+        <div className="flex justify-end items-center">
             {character.currentBreaths < 0 && (
                 <div className="flex items-center gap-2 text-red-600 text-xs font-bold bg-red-50 px-2 py-1 rounded">
                     <ShieldAlert size={14} />
