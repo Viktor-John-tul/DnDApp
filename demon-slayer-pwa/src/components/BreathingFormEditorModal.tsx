@@ -6,6 +6,7 @@ interface Props {
   form: BreathingForm;
   onSave: (form: BreathingForm) => void;
   onClose: () => void;
+  isDemon?: boolean;
 }
 
 const EFFECT_TYPES: { value: FormEffectType; label: string; icon: any }[] = [
@@ -15,7 +16,7 @@ const EFFECT_TYPES: { value: FormEffectType; label: string; icon: any }[] = [
   { value: 'heal', label: 'Heal Self', icon: Heart },
 ];
 
-export function BreathingFormEditorModal({ form: initialForm, onSave, onClose }: Props) {
+export function BreathingFormEditorModal({ form: initialForm, onSave, onClose, isDemon = false }: Props) {
   const [form, setForm] = React.useState<BreathingForm>(initialForm);
 
   const handleDone = () => {
@@ -80,10 +81,13 @@ export function BreathingFormEditorModal({ form: initialForm, onSave, onClose }:
               <label className="block text-sm font-medium text-gray-700 mb-1">SP Cost</label>
               <input 
                  type="number"
-                 value={form.spCost}
+                 value={(!isDemon) ? ("(Order Based)") : form.spCost}
+                 disabled={!isDemon}
                  onChange={(e) => setForm({ ...form, spCost: parseInt(e.target.value) || 0 })}
-                 className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-slayer-orange outline-none"
+                 className={`w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-slayer-orange outline-none ${!isDemon ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : ''}`}
+                 placeholder={!isDemon ? "Calculated automatically" : "Enter Cost"}
               />
+              {!isDemon && <p className="text-[10px] text-gray-400 mt-1">Cost = Form Number × 3</p>}
             </div>
           </div>
 

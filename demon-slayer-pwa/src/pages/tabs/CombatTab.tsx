@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Swords, Wind, Zap, AlertTriangle, Plus, Minus, ShieldAlert, X, Heart, Shield } from 'lucide-react';
+import { Swords, Wind, Zap, AlertTriangle, Plus, Minus, ShieldAlert, X, Heart, Shield, ArrowUp, ArrowDown } from 'lucide-react';
 import type { RPGCharacter, BreathingForm } from '../../types';
 import { Calculator } from '../../services/rules';
 import { DiceRollerOverlay } from '../../components/DiceRollerOverlay';
@@ -72,8 +72,27 @@ export function CombatTab({ character, onUpdate, readOnly }: Props) {
     onUpdate({ currentBreaths: newVal });
   };
 
-  const handleTechniqueRoll = (form: BreathingForm) => {
-    const cost = form.spCost || 0;
+  const getOrdinal = (n: number) => {
+      const s = ["th", "st", "nd", "rd"];
+      const v = n % 100;
+      return n + (s[(v - 20) % 10] || s[v] || s[0]);
+  };
+
+  const moveForm = (index: number, direction: 'up' | 'down') => {
+      if (readOnly) return;
+      const newIndex = direction === 'up' ? index - 1 : index + 1;
+      if (newIndex < 0 || newIndex >= character.breathingForms.length) return;
+      
+      const newForms = [...character.breathingForms];
+      const temp = newForms[index];
+      newForms[index] = newForms[newIndex];
+      newForms[newIndex] = temp;
+      
+      onUpdate({ breathingForms: newForms });
+  };
+
+  const handleTechniqueRoll = (form: BreathingForm, calculatedCost?: number) => {
+    const cost = calculatedCost !== undefined ? calculatedCost : (form.spCost || 0);
     const nextBreaths = character.currentBreaths - cost;
     
     // Check for Overdraft Condition
@@ -531,11 +550,40 @@ export function CombatTab({ character, onUpdate, readOnly }: Props) {
                 <p className="text-sm">No techniques learned yet.</p>
             </div>
         ) : (
-            character.breathingForms.map(form => (
-                <div key={form.id} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex justify-between items-center">
+            character.breathingForms.map((form, index) => {
+                const formNumber = index + 1;
+                const cost = isDemon ? form.spCost : (formNumber * 3);
+                // Prepend Ordinal if not Demon (e.g., "1st Form: ...")
+                // Only if name doesn't already start with it (simple heuristic)
+                const displayName = (!isDemon && !form.name.match(/^\d+.. Form/)) 
+                    ? `${getOrdinal(formNumber)} Form: ${form.name}`
+                    : form.name;
+
+                return (
+                <div key={form.id} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex justify-between items-center group">
+                    {/* Reordering Controls (Only visible when not ReadOnly) */}
+                    {!readOnly && (
+                        <div className="flex flex-col gap-1 mr-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button 
+                                onClick={(e) => { e.stopPropagation(); moveForm(index, 'up'); }}
+                                disabled={index === 0}
+                                className={`text-gray-400 hover:text-slayer-orange ${index === 0 ? 'invisible' : ''}`}
+                            >
+                                <ArrowUp size={14} />
+                            </button>
+                            <button 
+                                onClick={(e) => { e.stopPropagation(); moveForm(index, 'down'); }}
+                                disabled={index === character.breathingForms.length - 1}
+                                className={`text-gray-400 hover:text-slayer-orange ${index === character.breathingForms.length - 1 ? 'invisible' : ''}`}
+                            >
+                                <ArrowDown size={14} />
+                            </button>
+                        </div>
+                    )}
+
                     <div className={`flex-1 ${!readOnly ? 'cursor-pointer' : ''}`} onClick={() => !readOnly && setEditingForm(form)}>
                         <div className="flex items-center gap-2 mb-1">
-                            <h4 className="font-bold text-gray-800">{form.name}</h4>
+                            <h4 className="font-bold text-gray-800">{displayName}</h4>
                             <span className="text-[10px] font-bold px-1.5 py-0.5 bg-gray-100 rounded text-gray-500 uppercase">
                                 {form.diceCount}d{form.diceFace}
                             </span>
@@ -546,10 +594,10 @@ export function CombatTab({ character, onUpdate, readOnly }: Props) {
                     <div className="flex items-center gap-3">
                          <div className="text-center min-w-[30px]">
                             <span className="block text-[10px] text-gray-400 font-bold uppercase">Cost</span>
-                            <span className="block font-bold text-cyan-600">{form.spCost}</span>
+                            <span className="block font-bold text-cyan-600">{cost}</span>
                         </div>
                         <button 
-                            onClick={() => !readOnly && handleTechniqueRoll(form)}
+                            onClick={() => !readOnly && handleTechniqueRoll(form, cost)}
                             disabled={readOnly}
                             className={`p-2.5 rounded-xl shadow-lg transition-all ${readOnly ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-gray-900 text-white shadow-gray-200 active:scale-95'}`}
                         >
@@ -557,7 +605,7 @@ export function CombatTab({ character, onUpdate, readOnly }: Props) {
                         </button>
                     </div>
                 </div>
-            ))
+            )})
         )}
       </div>
 
@@ -565,6 +613,7 @@ export function CombatTab({ character, onUpdate, readOnly }: Props) {
       {editingForm && (
         <BreathingFormEditorModal 
             form={editingForm} 
+            isDemon={isDemon}
             onSave={(updatedForm) => {
                 const exists = character.breathingForms.find(f => f.id === updatedForm.id);
                 let newForms;
