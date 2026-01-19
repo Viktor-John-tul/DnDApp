@@ -5,6 +5,7 @@ import { useAuth } from "../context/AuthContext";
 import { CharacterService } from "../services/characterService";
 import { StorageService } from "../services/storageService";
 import { StatStepper } from "../components/StatStepper";
+import { useToast } from "../context/ToastContext";
 
 import type { RPGCharacter } from "../types";
 
@@ -21,6 +22,7 @@ const ALL_SKILLS = [
 export function CharacterCreation() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { showToast } = useToast();
   
   // Identity
   const [name, setName] = useState("");
@@ -143,7 +145,7 @@ export function CharacterCreation() {
       navigate('/');
     } catch (error) {
       console.error("Save failed", error);
-      alert("Failed to save character. Please try again.");
+      showToast("Failed to save character. Please try again.", 'error');
     } finally {
       setIsSaving(false);
     }

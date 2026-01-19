@@ -5,6 +5,7 @@ import { Calculator } from '../../services/rules';
 import { DiceRollerOverlay } from '../../components/DiceRollerOverlay';
 import { BreathingFormEditorModal } from '../../components/BreathingFormEditorModal';
 import { AnimatePresence, motion } from 'framer-motion';
+import { useToast } from '../../context/ToastContext';
 
 interface Props {
   character: RPGCharacter;
@@ -29,6 +30,7 @@ interface ActiveRollState {
 }
 
 export function CombatTab({ character, onUpdate, readOnly }: Props) {
+  const { showToast } = useToast();
   const [activeRoll, setActiveRoll] = useState<ActiveRollState | null>(null);
   const [showOverdraftWarning] = useState(false);
   const [editingForm, setEditingForm] = useState<BreathingForm | null>(null);
@@ -200,7 +202,7 @@ export function CombatTab({ character, onUpdate, readOnly }: Props) {
           };
           
           onUpdate(updates);
-          alert(`Buff Applied: ${form.name}!`);
+          showToast(`Buff Applied: ${form.name}!`, 'success');
           return;
       }
 
@@ -218,7 +220,7 @@ export function CombatTab({ character, onUpdate, readOnly }: Props) {
                   isRegenBuff: true
               };
               onUpdate(updates);
-              alert(`Regeneration Applied: ${form.name}!`);
+              showToast(`Regeneration Applied: ${form.name}!`, 'success');
               return;
           }
 

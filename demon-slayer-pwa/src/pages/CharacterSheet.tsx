@@ -10,6 +10,7 @@ import { DeathScreen } from "../components/DeathScreen";
 import { Shield, Swords, Backpack, Book, ChevronLeft, Loader2, Wifi } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { GameService } from "../services/gameService";
+import { useToast } from "../context/ToastContext";
 
 type TabId = 'stats' | 'combat' | 'inventory' | 'bio';
 
@@ -17,6 +18,7 @@ export function CharacterSheet() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { showToast } = useToast();
   
   const [character, setCharacter] = useState<RPGCharacter | null>(null);
   const [loading, setLoading] = useState(true);
@@ -89,7 +91,7 @@ export function CharacterSheet() {
         setShowJoinModal(false);
     } catch (err) {
         console.error(err);
-        alert("Failed to join. Check code.");
+        showToast("Failed to join. Check code.", 'error');
     }
   };
 

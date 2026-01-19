@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Coins, Trash2, Plus, Minus, Weight, Backpack, Skull } from "lucide-react";
 import type { RPGCharacter, InventoryItem } from "../../types";
+import { useToast } from "../../context/ToastContext";
 
 interface Props {
   character: RPGCharacter;
@@ -9,6 +10,7 @@ interface Props {
 }
 
 export function InventoryTab({ character, onUpdate, readOnly }: Props) {
+  const { showToast } = useToast();
   const [isAdding, setIsAdding] = useState(false);
   const [newItem, setNewItem] = useState<Partial<InventoryItem>>({ name: "", quantity: 1, weight: 0 });
 
@@ -51,7 +53,7 @@ export function InventoryTab({ character, onUpdate, readOnly }: Props) {
             // Also update HP? Assuming customHP manual update is preferred for demons, 
             // but Constitution affects HP. We should probably leave HP alone if it's manual.
         };
-        alert("Demon Blood Power Up! All attributes increased by +1");
+        showToast("Demon Blood Power Up! All attributes increased by +1", "success");
     } else if (change < 0 && (newKills + 1) % 10 === 0) {
          // Reverting power up? User didn't specify. I will perform it to keep it consistent.
          updates = {

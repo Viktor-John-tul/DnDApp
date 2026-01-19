@@ -1,5 +1,6 @@
 import { HashRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
+import { ToastProvider } from "./context/ToastContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { LoginPage } from "./pages/LoginPage";
 import { Dashboard } from "./pages/Dashboard";
@@ -11,8 +12,9 @@ import { DMView } from "./pages/multiplayer/DMView";
 function App() {
   return (
     <AuthProvider>
-      <HashRouter>
-        <Routes>
+      <ToastProvider>
+        <HashRouter>
+          <Routes>
           <Route path="/login" element={<LoginPage />} />
           
           <Route path="/" element={
@@ -45,7 +47,8 @@ function App() {
             </ProtectedRoute>
           } />
         </Routes>
-      </HashRouter>
+        </HashRouter>
+      </ToastProvider>
     </AuthProvider>
   );
 }

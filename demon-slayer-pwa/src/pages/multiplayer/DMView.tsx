@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
+import { useToast } from "../../context/ToastContext";
 import { GameService } from "../../services/gameService";
 import { CharacterService } from "../../services/characterService";
 import type { GameSession } from "../../services/gameService";
@@ -18,6 +19,7 @@ const COMMON_EFFECTS = [
 ];
 
 export function DMView() {
+  const { showToast } = useToast();
   const { user } = useAuth();
   const navigate = useNavigate();
   const [sessionCode, setSessionCode] = useState<string | null>(null);
@@ -104,12 +106,12 @@ export function DMView() {
           });
 
           await Promise.all(promises);
-          alert(`Applied ${selectedEffect} to ${targetIds.size} players.`);
+          showToast(`Applied ${selectedEffect} to ${targetIds.size} players.`, 'success');
           setTargetIds(new Set()); // Clear selection
           setSelectedEffect(null);
       } catch (error) {
           console.error("Failed to apply effects", error);
-          alert("Error applying effects");
+          showToast("Error applying effects", 'error');
       } finally {
           setApplyingEffect(false);
       }
