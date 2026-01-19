@@ -795,6 +795,7 @@ export function CombatTab({ character, onUpdate, readOnly }: Props) {
                  />
              ))}
          </div>
+      </div>
 
       {editingAction && (
           <CombatActionEditorModal
