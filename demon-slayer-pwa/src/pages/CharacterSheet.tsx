@@ -27,6 +27,35 @@ export function CharacterSheet() {
   const [showJoinModal, setShowJoinModal] = useState(false);
   
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const prevCharacterRef = useRef<RPGCharacter | null>(null);
+
+  // Notification Listener
+  useEffect(() => {
+      if (!character) return;
+      
+      const prev = prevCharacterRef.current;
+      if (prev) {
+          // Check for received items (From DM)
+          if (character.inventory.length > prev.inventory.length) {
+              const newItems = character.inventory.filter(item => 
+                  !prev.inventory.some(p => p.id === item.id)
+              );
+              
+              newItems.forEach(item => {
+                  if (item.description === "Given by DM") {
+                      showToast(`Received item: ${item.name} (x${item.quantity}) from DM`, 'success');
+                  }
+              });
+          }
+
+          // Check for DM Note changes
+          if (character.dmNotes !== prev.dmNotes && prev.dmNotes !== undefined) {
+               showToast("DM updated your private notes", 'info');
+          }
+      }
+      
+      prevCharacterRef.current = character;
+  }, [character]);
 
   useEffect(() => {
      if (sessionCode && character) {
