@@ -7,7 +7,8 @@ import { GameService } from "../../services/gameService";
 import { CharacterService } from "../../services/characterService";
 import type { GameSession } from "../../services/gameService";
 import type { StatusEffect, InventoryItem } from "../../types";
-import { Copy, Users, Heart, Wind, Power, ArrowLeft, Sparkles, CheckSquare, Square, Backpack, FileText, Coins } from 'lucide-react';
+import { Copy, Users, Power, ArrowLeft, Sparkles, Backpack, FileText, Coins, X, Heart, Wind, Square, CheckSquare } from 'lucide-react';
+import { motion, AnimatePresence } from "framer-motion";
 
 const COMMON_EFFECTS = [
     { name: "Advantage", type: "advantage" },
@@ -32,6 +33,7 @@ export function DMView() {
   const [selectedEffect, setSelectedEffect] = useState<string | null>(null);
   const [targetIds, setTargetIds] = useState<Set<string>>(new Set());
   const [applyingEffect, setApplyingEffect] = useState(false);
+  const [activeTool, setActiveTool] = useState<'effects' | 'items' | 'gold' | 'notes'>('effects');
 
   // Item Adding State
   const [newItemParams, setNewItemParams] = useState({ name: "", quantity: 1, weight: 0 });
@@ -285,121 +287,219 @@ export function DMView() {
           </div>
        </div>
 
-       {/* DM Tools Panel */}
-       <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 mb-6 space-y-6">
-           {/* Section 1: Status Effects */}
-           <div>
-               <h3 className="font-bold text-gray-800 mb-3 flex items-center gap-2"><Sparkles size={18} className="text-slayer-orange"/> Apply Status Effect</h3>
-               <div className="flex flex-wrap gap-2 mb-4">
-                   {COMMON_EFFECTS.map(effect => (
-                       <button
-                           key={effect.name}
-                           onClick={() => setSelectedEffect(effect.name)}
-                           className={`px-3 py-1.5 rounded-lg text-sm font-bold border transition-all ${selectedEffect === effect.name ? 'bg-slayer-orange text-white border-slayer-orange' : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100'}`}
+       {/* DM Tools Container */}
+       <div className="bg-white rounded-2xl shadow-xl border border-gray-200 mb-8 overflow-hidden">
+           {/* Tool Tabs */}
+           <div className="flex border-b border-gray-100 overflow-x-auto">
+               <ToolTab 
+                  active={activeTool === 'effects'} 
+                  onClick={() => setActiveTool('effects')} 
+                  icon={<Sparkles size={18}/>} 
+                  label="Effects"
+                  color="text-slayer-orange" 
+                />
+               <ToolTab 
+                  active={activeTool === 'items'} 
+                  onClick={() => setActiveTool('items')} 
+                  icon={<Backpack size={18}/>} 
+                  label="Items"
+                  color="text-blue-500" 
+                />
+               <ToolTab 
+                  active={activeTool === 'gold'} 
+                  onClick={() => setActiveTool('gold')} 
+                  icon={<Coins size={18}/>} 
+                  label="Gold"
+                  color="text-yellow-500" 
+                />
+               <ToolTab 
+                  active={activeTool === 'notes'} 
+                  onClick={() => setActiveTool('notes')} 
+                  icon={<FileText size={18}/>} 
+                  label="Notes"
+                  color="text-purple-500" 
+                />
+           </div>
+
+           {/* Tool Content */}
+           <div className="p-6 bg-gray-50/50 min-h-[300px]">
+               <AnimatePresence mode="wait">
+                   {activeTool === 'effects' && (
+                       <motion.div 
+                         key="effects"
+                         initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
+                         className="space-y-4"
                        >
-                           {effect.name}
-                       </button>
-                   ))}
-               </div>
-               {selectedEffect && (
-                    <button 
-                        onClick={handleApplyEffect}
-                        disabled={targetIds.size === 0 || applyingEffect}
-                        className="w-full bg-slayer-orange text-white font-bold py-3 rounded-xl disabled:opacity-50 active:scale-95 transition-all shadow-lg shadow-orange-100"
-                    >
-                        Apply {selectedEffect} to {targetIds.size} Player(s)
-                    </button>
-               )}
-           </div>
+                           <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-2">Select Effect</h3>
+                           <div className="flex flex-wrap gap-2">
+                               {COMMON_EFFECTS.map(effect => (
+                                   <button
+                                       key={effect.name}
+                                       onClick={() => setSelectedEffect(effect.name)}
+                                       className={`px-4 py-2 rounded-xl text-sm font-bold border transition-all ${
+                                           selectedEffect === effect.name 
+                                           ? 'bg-slayer-orange text-white border-slayer-orange ring-2 ring-orange-200' 
+                                           : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300 shadow-sm'
+                                       }`}
+                                   >
+                                       {effect.name}
+                                   </button>
+                               ))}
+                           </div>
+                           
+                           <div className="pt-4 mt-4 border-t border-gray-200">
+                                <button 
+                                    onClick={handleApplyEffect}
+                                    disabled={!selectedEffect || targetIds.size === 0 || applyingEffect}
+                                    className="w-full bg-slayer-orange text-white font-bold py-4 rounded-xl disabled:opacity-50 active:scale-[0.98] transition-all shadow-lg shadow-orange-100 flex items-center justify-center gap-2"
+                                >
+                                    {applyingEffect ? 'Applying...' : (
+                                        <>
+                                            Apply {selectedEffect || 'Effect'} 
+                                            <span className="bg-white/20 px-2 py-0.5 rounded text-xs">
+                                                {targetIds.size} Players
+                                            </span>
+                                        </>
+                                    )}
+                                </button>
+                           </div>
+                       </motion.div>
+                   )}
 
-           <div className="border-t border-gray-100"></div>
+                   {activeTool === 'items' && (
+                       <motion.div 
+                         key="items"
+                         initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
+                         className="space-y-4"
+                       >
+                            <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-2">Item Details</h3>
+                            <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm space-y-3">
+                                <input 
+                                    type="text" 
+                                    placeholder="Item Name"
+                                    value={newItemParams.name}
+                                    onChange={e => setNewItemParams({...newItemParams, name: e.target.value})}
+                                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg font-medium outline-none focus:ring-2 ring-blue-100 transition-all"
+                                />
+                                <div className="flex gap-3">
+                                    <div className="flex-1">
+                                        <label className="text-[10px] uppercase font-bold text-gray-400 mb-1 block">Quantity</label>
+                                        <input 
+                                            type="number" 
+                                            value={newItemParams.quantity}
+                                            onChange={e => setNewItemParams({...newItemParams, quantity: Math.max(1, parseInt(e.target.value)||1)})}
+                                            className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg font-medium text-center outline-none focus:ring-2 ring-blue-100"
+                                        />
+                                    </div>
+                                    <div className="flex-1">
+                                        <label className="text-[10px] uppercase font-bold text-gray-400 mb-1 block">Weight</label>
+                                        <input 
+                                            type="number" 
+                                            value={newItemParams.weight}
+                                            onChange={e => setNewItemParams({...newItemParams, weight: parseFloat(e.target.value)||0})}
+                                            className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg font-medium text-center outline-none focus:ring-2 ring-blue-100"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
 
-           {/* Section 2: Give Items */}
-           <div>
-                <h3 className="font-bold text-gray-800 mb-3 flex items-center gap-2"><Backpack size={18} className="text-blue-500"/> Give Item</h3>
-                <div className="flex gap-2 mb-2">
-                    <input 
-                        type="text" 
-                        placeholder="Item Name"
-                        value={newItemParams.name}
-                        onChange={e => setNewItemParams({...newItemParams, name: e.target.value})}
-                        className="flex-[2] p-2 border border-gray-200 rounded-lg text-sm"
-                    />
-                    <input 
-                        type="number" 
-                        placeholder="Qty"
-                        value={newItemParams.quantity}
-                        onChange={e => setNewItemParams({...newItemParams, quantity: Math.max(1, parseInt(e.target.value)||1)})}
-                        className="w-16 p-2 border border-gray-200 rounded-lg text-sm text-center"
-                    />
-                     <input 
-                        type="number" 
-                        placeholder="Wt."
-                        value={newItemParams.weight}
-                        onChange={e => setNewItemParams({...newItemParams, weight: parseFloat(e.target.value)||0})}
-                        className="w-16 p-2 border border-gray-200 rounded-lg text-sm text-center"
-                    />
-                </div>
-                <button 
-                    onClick={handleGiveItem}
-                    disabled={targetIds.size === 0 || !newItemParams.name}
-                    className="w-full bg-blue-500 text-white font-bold py-3 rounded-xl disabled:opacity-50 active:scale-95 transition-all shadow-lg shadow-blue-100"
-                >
-                    Give Item to {targetIds.size} Player(s)
-                </button>
-           </div>
-           
-           <div className="border-t border-gray-100"></div>
+                            <button 
+                                onClick={handleGiveItem}
+                                disabled={targetIds.size === 0 || !newItemParams.name}
+                                className="w-full bg-blue-500 text-white font-bold py-4 rounded-xl disabled:opacity-50 active:scale-[0.98] transition-all shadow-lg shadow-blue-100 flex items-center justify-center gap-2"
+                            >
+                                <Backpack size={20} />
+                                Give to {targetIds.size} Players
+                            </button>
+                       </motion.div>
+                   )}
 
-           {/* Section 3: Give Gold */}
-           <div>
-                <h3 className="font-bold text-gray-800 mb-3 flex items-center gap-2"><Coins size={18} className="text-yellow-500"/> Give Gold</h3>
-                <div className="flex gap-2 mb-2">
-                    <input 
-                        type="number" 
-                        placeholder="Amount (Use negative to remove)"
-                        value={goldAmount === 0 ? '' : goldAmount}
-                        onChange={e => setGoldAmount(parseInt(e.target.value))}
-                        className="flex-1 p-2 border border-gray-200 rounded-lg text-sm"
-                    />
-                </div>
-                <button 
-                    onClick={handleGiveGold}
-                    disabled={targetIds.size === 0 || !goldAmount}
-                    className="w-full bg-yellow-500 text-white font-bold py-3 rounded-xl disabled:opacity-50 active:scale-95 transition-all shadow-lg shadow-yellow-100"
-                >
-                    Transfer Gold to {targetIds.size} Player(s)
-                </button>
-           </div>
+                   {activeTool === 'gold' && (
+                       <motion.div 
+                         key="gold"
+                         initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
+                         className="space-y-4"
+                       >
+                           <div className="text-center py-6">
+                               <div className="text-6xl font-black text-gray-200 mb-4 select-none">GP</div>
+                               <input 
+                                   type="number" 
+                                   placeholder="0"
+                                   value={goldAmount === 0 ? '' : goldAmount}
+                                   onChange={e => setGoldAmount(parseInt(e.target.value))}
+                                   className="w-full max-w-[200px] text-center text-4xl font-bold bg-transparent border-b-2 border-gray-200 focus:border-yellow-400 outline-none p-2 text-gray-800 placeholder-gray-300 mx-auto block"
+                               />
+                               <p className="text-gray-400 text-sm mt-2">Use negative values to remove gold</p>
+                           </div>
+                           
+                           <button 
+                                onClick={handleGiveGold}
+                                disabled={targetIds.size === 0 || !goldAmount}
+                                className="w-full bg-yellow-500 text-white font-bold py-4 rounded-xl disabled:opacity-50 active:scale-[0.98] transition-all shadow-lg shadow-yellow-100 flex items-center justify-center gap-2"
+                            >
+                                <Coins size={20} />
+                                Transfer to {targetIds.size} Players
+                            </button>
+                       </motion.div>
+                   )}
 
-           <div className="border-t border-gray-100"></div>
-
-           {/* Section 4: DM Notes */}
-           <div>
-               <h3 className="font-bold text-gray-800 mb-3 flex items-center gap-2"><FileText size={18} className="text-purple-500"/> DM Notes</h3>
-               <button 
-                    onClick={openNoteEditor}
-                    disabled={targetIds.size !== 1}
-                    className="w-full bg-purple-500 text-white font-bold py-3 rounded-xl disabled:opacity-50 active:scale-95 transition-all shadow-lg shadow-purple-100"
-               >
-                   {targetIds.size === 1 ? "Edit DM Notes for Selected" : "Select exactly 1 player to edit notes"}
-               </button>
+                   {activeTool === 'notes' && (
+                       <motion.div 
+                         key="notes"
+                         initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
+                         className="space-y-4"
+                       >
+                           <div className="bg-purple-50 rounded-xl p-8 text-center border border-purple-100">
+                               <FileText size={48} className="mx-auto text-purple-200 mb-4" />
+                               <h3 className="font-bold text-purple-900 text-lg mb-2">Private DM Notes</h3>
+                               <p className="text-purple-700/60 text-sm mb-6 max-w-xs mx-auto">
+                                   Select a single player below to view and edit their private session notes.
+                               </p>
+                               <button 
+                                    onClick={openNoteEditor}
+                                    disabled={targetIds.size !== 1}
+                                    className="bg-purple-500 text-white font-bold py-3 px-8 rounded-xl disabled:opacity-50 active:scale-[0.98] transition-all shadow-lg shadow-purple-200"
+                               >
+                                   {targetIds.size === 1 ? "Open Note Editor" : "Select 1 Player"}
+                               </button>
+                           </div>
+                       </motion.div>
+                   )}
+               </AnimatePresence>
            </div>
        </div>
        
        {showNoteEditor && (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-                <div className="bg-white w-full max-w-md rounded-2xl p-6 shadow-2xl">
-                    <h3 className="font-bold text-lg mb-4">Edit DM Notes</h3>
+                <div className="bg-white w-full max-w-md rounded-2xl p-6 shadow-2xl animate-fade-in-up">
+                    <div className="flex justify-between items-center mb-4">
+                        <h3 className="font-bold text-lg flex items-center gap-2">
+                             <FileText size={20} className="text-purple-500"/>
+                             Edit DM Notes
+                        </h3>
+                        <button onClick={() => setShowNoteEditor(false)} className="text-gray-400 hover:text-gray-600">
+                             <X size={20} />
+                        </button>
+                    </div>
                     <textarea 
                         value={dmNoteBuffer}
                         onChange={e => setDmNoteBuffer(e.target.value)}
-                        className="w-full h-32 p-3 border border-gray-200 rounded-xl mb-4 text-sm"
+                        className="w-full h-48 p-4 border border-gray-200 rounded-xl mb-4 text-sm bg-gray-50 focus:bg-white focus:ring-2 focus:ring-purple-100 outline-none transition-all resize-none"
                         placeholder="Private notes for/about this player..."
                     />
-                    <div className="flex gap-2">
-                        <button onClick={() => setShowNoteEditor(false)} className="flex-1 py-2 bg-gray-100 font-bold text-gray-600 rounded-lg">Cancel</button>
-                        <button onClick={handleUpdateDMNotes} className="flex-1 py-2 bg-purple-500 text-white font-bold rounded-lg shadow-lg shadow-purple-200">Save</button>
+                    <div className="flex gap-3">
+                        <button 
+                            onClick={() => setShowNoteEditor(false)} 
+                            className="flex-1 py-3 font-bold text-gray-500 bg-gray-50 hover:bg-gray-100 rounded-xl transition-colors"
+                        >
+                            Cancel
+                        </button>
+                        <button 
+                            onClick={handleUpdateDMNotes} 
+                            className="flex-1 py-3 bg-purple-500 hover:bg-purple-600 text-white font-bold rounded-xl shadow-lg shadow-purple-200 transition-all active:scale-[0.98]"
+                        >
+                            Save Notes
+                        </button>
                     </div>
                 </div>
             </div>
@@ -468,4 +568,26 @@ export function DMView() {
        </div>
     </div>
   );
+}
+
+function ToolTab({ active, onClick, icon, label, color }: { active: boolean, onClick: () => void, icon: React.ReactNode, label: string, color: string }) {
+    return (
+        <button 
+            onClick={onClick}
+            className={`flex-1 flex flex-col items-center justify-center p-4 min-w-[80px] transition-all relative ${active ? 'bg-white' : 'bg-gray-50 hover:bg-gray-100'}`}
+        >
+            <div className={`mb-1 transition-colors ${active ? color : 'text-gray-400'}`}>
+                {icon}
+            </div>
+            <span className={`text-[10px] font-bold uppercase tracking-wide transition-colors ${active ? 'text-gray-800' : 'text-gray-400'}`}>
+                {label}
+            </span>
+            {active && (
+                <motion.div 
+                    layoutId="activeTab"
+                    className={`absolute bottom-0 left-0 right-0 h-1 ${color.replace('text-', 'bg-')}`}
+                />
+            )}
+        </button>
+    );
 }
