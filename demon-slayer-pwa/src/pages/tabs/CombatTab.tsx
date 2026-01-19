@@ -60,10 +60,11 @@ export function CombatTab({ character, onUpdate, readOnly }: Props) {
   const attackMod = Math.max(strMod, dexMod); 
 
   const handleBreathRecovery = () => {
-    // Standard rule: Recover 1 + Con Mod (min 1)
-    const amount = Math.max(1, 1 + conMod);
-    const newBreaths = Math.min(character.maxBreaths, character.currentBreaths + amount);
-    onUpdate({ currentBreaths: newBreaths });
+    // Bonus Action: Recover All Breaths + Reset Overdraft DC to 15
+    onUpdate({ 
+        currentBreaths: character.maxBreaths,
+        currentOverdraftDC: 15
+    });
   };
 
   const adjustBreath = (amount: number) => {
@@ -471,14 +472,6 @@ export function CombatTab({ character, onUpdate, readOnly }: Props) {
                     <span className="text-gray-400 font-medium">/ {character.maxBreaths}</span>
                 </div>
             </div>
-            
-            <button 
-                onClick={handleBreathRecovery}
-                className="flex items-center gap-2 bg-cyan-50 text-cyan-700 px-3 py-2 rounded-lg text-sm font-bold active:scale-95 transition-transform"
-            >
-                <Wind size={16} />
-                Breathe
-            </button>
         </div>
 
         {/* Bar */}
@@ -667,6 +660,31 @@ export function CombatTab({ character, onUpdate, readOnly }: Props) {
             </div>
             <span className="text-xs font-bold text-gray-400">1d4 + {strMod}</span>
          </button>
+      </div>
+
+      {/* Bonus Actions */}
+      <div className="space-y-3">
+         <div className="flex justify-between items-center px-1">
+            <h3 className="font-bold text-gray-800">Bonus Actions</h3>
+         </div>
+         
+         {!isDemon && (
+             <button 
+                onClick={() => !readOnly && handleBreathRecovery()}
+                disabled={readOnly}
+                className={`w-full p-4 rounded-xl shadow-sm border border-gray-100 flex justify-between items-center ${readOnly ? 'bg-gray-50 opacity-50 cursor-not-allowed' : 'bg-white active:bg-gray-50'}`}
+             >
+                <div className="flex items-center gap-3">
+                    <div className="bg-cyan-50 p-2 rounded-lg">
+                        <Wind size={18} className="text-cyan-600"/>
+                    </div>
+                    <div className="text-left">
+                        <span className="font-bold text-sm text-gray-700 block">Total Concentration Breathing</span>
+                        <span className="text-xs text-gray-400">Restores all Breaths & Resets Overdraft</span>
+                    </div>
+                </div>
+             </button>
+         )}
       </div>
 
       {pendingHitConfirmForm && (
