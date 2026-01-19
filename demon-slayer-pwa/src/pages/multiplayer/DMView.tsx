@@ -6,8 +6,8 @@ import { useConfirm } from "../../context/ConfirmContext";
 import { GameService } from "../../services/gameService";
 import { CharacterService } from "../../services/characterService";
 import type { GameSession } from "../../services/gameService";
-import type { StatusEffect } from "../../types";
-import { Copy, Users, Heart, Wind, Power, ArrowLeft, Sparkles, CheckSquare, Square } from 'lucide-react';
+import type { StatusEffect, InventoryItem } from "../../types";
+import { Copy, Users, Heart, Wind, Power, ArrowLeft, Sparkles, CheckSquare, Square, Backpack, FileText } from 'lucide-react';
 
 const COMMON_EFFECTS = [
     { name: "Advantage", type: "advantage" },
@@ -32,6 +32,13 @@ export function DMView() {
   const [selectedEffect, setSelectedEffect] = useState<string | null>(null);
   const [targetIds, setTargetIds] = useState<Set<string>>(new Set());
   const [applyingEffect, setApplyingEffect] = useState(false);
+
+  // Item Adding State
+  const [newItemParams, setNewItemParams] = useState({ name: "", quantity: 1, weight: 0 });
+  
+  // Note Editing State
+  const [dmNoteBuffer, setDmNoteBuffer] = useState("");
+  const [showNoteEditor, setShowNoteEditor] = useState(false);
 
   // Initialize Game Session
   useEffect(() => {
@@ -127,6 +134,70 @@ export function DMView() {
       }
   };
 
+  const handleGiveItem = async () => {
+      if (!newItemParams.name || targetIds.size === 0) return;
+      
+      const isConfirmed = await confirm({
+          title: "Give Item to Players",
+          message: `Give "${newItemParams.name}" (x${newItemParams.quantity}) to ${targetIds.size} player(s)?`,
+          confirmText: "Give Item",
+          variant: "info"
+      });
+      if (!isConfirmed) return;
+
+      try {
+          const promises = Array.from(targetIds).map(async (charId) => {
+              const char = await CharacterService.get(charId);
+              if (!char) return;
+
+              const newItem: InventoryItem = {
+                  id: crypto.randomUUID(),
+                  name: newItemParams.name,
+                  description: "Given by DM",
+                  quantity: newItemParams.quantity,
+                  weight: newItemParams.weight
+              };
+              
+              const currentInv = char.inventory || [];
+              await CharacterService.update(charId, { inventory: [...currentInv, newItem] });
+          });
+
+          await Promise.all(promises);
+          showToast(`Given ${newItemParams.name} to ${targetIds.size} players.`, 'success');
+          setNewItemParams({ name: "", quantity: 1, weight: 0 });
+          setTargetIds(new Set()); 
+      } catch (error) {
+          showToast("Error giving items", 'error');
+      }
+  };
+
+  const handleUpdateDMNotes = async () => {
+      if (targetIds.size !== 1) return;
+      const charId = Array.from(targetIds)[0];
+      
+      try {
+          await CharacterService.update(charId, { dmNotes: dmNoteBuffer });
+          showToast("DM Notes updated", 'success');
+          setShowNoteEditor(false);
+          setTargetIds(new Set());
+      } catch (error) {
+          showToast("Error updating notes", 'error');
+      }
+  };
+
+  const openNoteEditor = async () => {
+    if (targetIds.size !== 1) {
+        showToast("Select exactly one player to edit notes", 'info');
+        return;
+    }
+    const charId = Array.from(targetIds)[0];
+    const char = await CharacterService.get(charId);
+    if(char) {
+        setDmNoteBuffer(char.dmNotes || "");
+        setShowNoteEditor(true);
+    }
+  };
+
   const toggleTarget = (id: string) => {
       const newSet = new Set(targetIds);
       if (newSet.has(id)) newSet.delete(id);
@@ -184,33 +255,94 @@ export function DMView() {
        </div>
 
        {/* DM Tools Panel */}
-       <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 mb-6">
-           <h3 className="font-bold text-gray-800 mb-3 flex items-center gap-2"><Sparkles size={18} className="text-slayer-orange"/> Apply Status Effect</h3>
-           <div className="flex flex-wrap gap-2 mb-4">
-               {COMMON_EFFECTS.map(effect => (
-                   <button
-                       key={effect.name}
-                       onClick={() => setSelectedEffect(effect.name)}
-                       className={`px-3 py-1.5 rounded-lg text-sm font-bold border transition-all ${selectedEffect === effect.name ? 'bg-slayer-orange text-white border-slayer-orange' : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100'}`}
-                   >
-                       {effect.name}
-                   </button>
-               ))}
+       <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 mb-6 space-y-6">
+           {/* Section 1: Status Effects */}
+           <div>
+               <h3 className="font-bold text-gray-800 mb-3 flex items-center gap-2"><Sparkles size={18} className="text-slayer-orange"/> Apply Status Effect</h3>
+               <div className="flex flex-wrap gap-2 mb-4">
+                   {COMMON_EFFECTS.map(effect => (
+                       <button
+                           key={effect.name}
+                           onClick={() => setSelectedEffect(effect.name)}
+                           className={`px-3 py-1.5 rounded-lg text-sm font-bold border transition-all ${selectedEffect === effect.name ? 'bg-slayer-orange text-white border-slayer-orange' : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100'}`}
+                       >
+                           {effect.name}
+                       </button>
+                   ))}
+               </div>
+               {selectedEffect && (
+                    <button 
+                        onClick={handleApplyEffect}
+                        disabled={targetIds.size === 0 || applyingEffect}
+                        className="w-full bg-slayer-orange text-white font-bold py-3 rounded-xl disabled:opacity-50 active:scale-95 transition-all shadow-lg shadow-orange-100"
+                    >
+                        Apply {selectedEffect} to {targetIds.size} Player(s)
+                    </button>
+               )}
+           </div>
+
+           <div className="border-t border-gray-100"></div>
+
+           {/* Section 2: Give Items */}
+           <div>
+                <h3 className="font-bold text-gray-800 mb-3 flex items-center gap-2"><Backpack size={18} className="text-blue-500"/> Give Item</h3>
+                <div className="flex gap-2 mb-2">
+                    <input 
+                        type="text" 
+                        placeholder="Item Name"
+                        value={newItemParams.name}
+                        onChange={e => setNewItemParams({...newItemParams, name: e.target.value})}
+                        className="flex-1 p-2 border border-gray-200 rounded-lg text-sm"
+                    />
+                    <input 
+                        type="number" 
+                        placeholder="Qty"
+                        value={newItemParams.quantity}
+                        onChange={e => setNewItemParams({...newItemParams, quantity: Math.max(1, parseInt(e.target.value)||1)})}
+                        className="w-16 p-2 border border-gray-200 rounded-lg text-sm text-center"
+                    />
+                </div>
+                <button 
+                    onClick={handleGiveItem}
+                    disabled={targetIds.size === 0 || !newItemParams.name}
+                    className="w-full bg-blue-500 text-white font-bold py-3 rounded-xl disabled:opacity-50 active:scale-95 transition-all shadow-lg shadow-blue-100"
+                >
+                    Give Item to {targetIds.size} Player(s)
+                </button>
            </div>
            
-           <div className="flex items-center justify-between bg-gray-50 p-3 rounded-lg border border-gray-100">
-               <span className="text-sm font-bold text-gray-500">
-                   {targetIds.size === 0 ? "Select players below..." : `${targetIds.size} player(s) selected`}
-               </span>
+           <div className="border-t border-gray-100"></div>
+
+           {/* Section 3: DM Notes */}
+           <div>
+               <h3 className="font-bold text-gray-800 mb-3 flex items-center gap-2"><FileText size={18} className="text-purple-500"/> DM Notes</h3>
                <button 
-                  onClick={handleApplyEffect}
-                  disabled={!selectedEffect || targetIds.size === 0 || applyingEffect}
-                  className={`px-4 py-2 rounded-lg font-bold text-sm transition-all ${(!selectedEffect || targetIds.size === 0) ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-gray-900 text-white hover:bg-black shadow-lg shadow-gray-300'}`}
+                    onClick={openNoteEditor}
+                    disabled={targetIds.size !== 1}
+                    className="w-full bg-purple-500 text-white font-bold py-3 rounded-xl disabled:opacity-50 active:scale-95 transition-all shadow-lg shadow-purple-100"
                >
-                   {applyingEffect ? "Applying..." : "Apply Effect"}
+                   {targetIds.size === 1 ? "Edit DM Notes for Selected" : "Select exactly 1 player to edit notes"}
                </button>
            </div>
        </div>
+       
+       {showNoteEditor && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                <div className="bg-white w-full max-w-md rounded-2xl p-6 shadow-2xl">
+                    <h3 className="font-bold text-lg mb-4">Edit DM Notes</h3>
+                    <textarea 
+                        value={dmNoteBuffer}
+                        onChange={e => setDmNoteBuffer(e.target.value)}
+                        className="w-full h-32 p-3 border border-gray-200 rounded-xl mb-4 text-sm"
+                        placeholder="Private notes for/about this player..."
+                    />
+                    <div className="flex gap-2">
+                        <button onClick={() => setShowNoteEditor(false)} className="flex-1 py-2 bg-gray-100 font-bold text-gray-600 rounded-lg">Cancel</button>
+                        <button onClick={handleUpdateDMNotes} className="flex-1 py-2 bg-purple-500 text-white font-bold rounded-lg shadow-lg shadow-purple-200">Save</button>
+                    </div>
+                </div>
+            </div>
+       )}
 
        {/* Players Grid */}
        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">

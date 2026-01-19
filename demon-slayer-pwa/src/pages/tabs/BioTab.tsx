@@ -65,6 +65,17 @@ export function BioTab({ character, onUpdate, readOnly }: Props) {
                 placeholder="Session notes, loot tracking, etc..."
             />
         </Section>
+
+        {formData.dmNotes && (
+            <div className="bg-purple-50 rounded-xl p-5 shadow-sm border border-purple-100">
+                <h4 className="flex items-center gap-2 font-bold text-purple-800 mb-4 text-sm uppercase tracking-wide">
+                    <FileText size={16} /> DM Notes
+                </h4>
+                <div className="text-sm font-medium text-purple-900 whitespace-pre-wrap leading-relaxed">
+                    {formData.dmNotes}
+                </div>
+            </div>
+        )}
       </div>
     </div>
   );

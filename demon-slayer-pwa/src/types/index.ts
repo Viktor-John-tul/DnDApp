@@ -132,6 +132,7 @@ export interface RPGCharacter {
   flaws: string;
   backstory: string;
   notes: string;
+  dmNotes?: string;
   
   // Timestamps
   createdAt: number; // Unix timestamp
