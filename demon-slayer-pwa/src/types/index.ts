@@ -29,6 +29,7 @@ export interface BreathingForm {
   diceFace: number;
   spCost: number;
   effectType: FormEffectType;
+  isLocked?: boolean;
 }
 
 export type CharacterType = 'slayer' | 'demon';

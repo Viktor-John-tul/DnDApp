@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Swords, Wind, Zap, AlertTriangle, Plus, Minus, ShieldAlert, X, Heart, Shield, ArrowUp, ArrowDown, Clock } from 'lucide-react';
+import { Swords, Wind, Zap, AlertTriangle, Plus, Minus, ShieldAlert, X, Heart, Shield, ArrowUp, ArrowDown, Clock, Lock } from 'lucide-react';
 import type { RPGCharacter, BreathingForm, CombatAction } from '../../types';
 import { Calculator } from '../../services/rules';
 import { DiceRollerOverlay } from '../../components/DiceRollerOverlay';
@@ -567,9 +567,16 @@ export function CombatTab({ character, onUpdate, readOnly }: Props) {
                     : form.name;
 
                 return (
-                <div key={form.id} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex justify-between items-center group">
+                <div key={form.id} className={`bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex justify-between items-center group relative ${form.isLocked ? 'grayscale opacity-75' : ''}`}>
+                    {/* Locked Indicator */}
+                    {form.isLocked && (
+                         <div className="absolute inset-0 z-10 bg-white/50 flex items-center justify-center rounded-xl pointer-events-none data-[admin-override=true]:pointer-events-auto">
+                              <Lock size={24} className="text-gray-400 opacity-50" />
+                         </div>
+                    )}
+
                     {/* Reordering Controls (Only visible when not ReadOnly) */}
-                    {!readOnly && (
+                    {!readOnly && !form.isLocked && (
                         <div className="flex flex-col gap-1 mr-3 opacity-0 group-hover:opacity-100 transition-opacity">
                             <button 
                                 onClick={(e) => { e.stopPropagation(); moveForm(index, 'up'); }}
@@ -588,9 +595,12 @@ export function CombatTab({ character, onUpdate, readOnly }: Props) {
                         </div>
                     )}
 
-                    <div className={`flex-1 ${!readOnly ? 'cursor-pointer' : ''}`} onClick={() => !readOnly && setEditingForm(form)}>
+                    <div className={`flex-1 ${!readOnly && !form.isLocked ? 'cursor-pointer' : ''}`} onClick={() => !readOnly && !form.isLocked && setEditingForm(form)}>
                         <div className="flex items-center gap-2 mb-1">
-                            <h4 className="font-bold text-gray-800">{displayName}</h4>
+                            <h4 className="font-bold text-gray-800 flex items-center gap-2">
+                                {displayName}
+                                {form.isLocked && <span className="text-[10px] bg-gray-200 text-gray-500 px-1.5 py-0.5 rounded uppercase font-bold tracking-wider">Locked</span>}
+                            </h4>
                             <span className="text-[10px] font-bold px-1.5 py-0.5 bg-gray-100 rounded text-gray-500 uppercase">
                                 {form.diceCount}d{form.diceFace}
                             </span>
@@ -598,15 +608,15 @@ export function CombatTab({ character, onUpdate, readOnly }: Props) {
                         <p className="text-xs text-gray-500 line-clamp-1">{form.description}</p>
                     </div>
 
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 relative z-20">
                          <div className="text-center min-w-[30px]">
                             <span className="block text-[10px] text-gray-400 font-bold uppercase">Cost</span>
                             <span className="block font-bold text-cyan-600">{cost}</span>
                         </div>
                         <button 
-                            onClick={() => !readOnly && handleTechniqueRoll(form, cost)}
-                            disabled={readOnly}
-                            className={`p-2.5 rounded-xl shadow-lg transition-all ${readOnly ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-gray-900 text-white shadow-gray-200 active:scale-95'}`}
+                            onClick={() => !readOnly && !form.isLocked && handleTechniqueRoll(form, cost)}
+                            disabled={readOnly || form.isLocked}
+                            className={`p-2.5 rounded-xl shadow-lg transition-all ${readOnly || form.isLocked ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-gray-900 text-white shadow-gray-200 active:scale-95'}`}
                         >
                             <Swords size={18} />
                         </button>

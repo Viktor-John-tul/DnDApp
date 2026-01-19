@@ -7,7 +7,7 @@ import { GameService } from "../../services/gameService";
 import { CharacterService } from "../../services/characterService";
 import type { GameSession } from "../../services/gameService";
 import type { StatusEffect, InventoryItem } from "../../types";
-import { Copy, Users, Power, ArrowLeft, Sparkles, Backpack, FileText, Coins, X, Heart, Wind, Square, CheckSquare } from 'lucide-react';
+import { Copy, Users, Power, ArrowLeft, Sparkles, Backpack, FileText, Coins, X, Heart, Wind, Square, CheckSquare, Swords, Lock } from 'lucide-react';
 import { motion, AnimatePresence } from "framer-motion";
 
 const COMMON_EFFECTS = [
@@ -33,7 +33,10 @@ export function DMView() {
   const [selectedEffect, setSelectedEffect] = useState<string | null>(null);
   const [targetIds, setTargetIds] = useState<Set<string>>(new Set());
   const [applyingEffect, setApplyingEffect] = useState(false);
-  const [activeTool, setActiveTool] = useState<'effects' | 'items' | 'gold' | 'notes' | 'health'>('effects');
+  const [activeTool, setActiveTool] = useState<'effects' | 'items' | 'gold' | 'notes' | 'health' | 'actions' | 'forms'>('effects');
+
+  // Action Adding State
+  const [newActionParams, setNewActionParams] = useState({ name: "", description: "", type: "main" as 'main' | 'bonus' | 'reaction' | 'free' });
 
   // Item Adding State
   const [newItemParams, setNewItemParams] = useState({ name: "", quantity: 1, weight: 0 });
@@ -219,6 +222,72 @@ export function DMView() {
       }
   };
 
+  const handleAddAction = async () => {
+      if (!newActionParams.name || targetIds.size === 0) return;
+
+      const isConfirmed = await confirm({
+          title: "Add Action",
+          message: `Add action "${newActionParams.name}" to ${targetIds.size} player(s)?`,
+          confirmText: "Add Action",
+          variant: "info"
+      });
+      if (!isConfirmed) return;
+
+      try {
+          const promises = Array.from(targetIds).map(async (charId) => {
+              const char = await CharacterService.get(charId);
+              if (!char) return;
+
+              const newAction = {
+                  id: crypto.randomUUID(),
+                  ...newActionParams
+              };
+              
+              const currentActions = char.customActions || [];
+              await CharacterService.update(charId, { customActions: [...currentActions, newAction] });
+          });
+
+          await Promise.all(promises);
+          showToast(`Added action to ${targetIds.size} players.`, 'success');
+          setNewActionParams({ name: "", description: "", type: "main" });
+          setTargetIds(new Set());
+      } catch (error) {
+          showToast("Error adding action", 'error');
+      }
+  };
+
+  const handleLockForms = async (shouldLock: boolean) => {
+      if (targetIds.size === 0) return;
+
+      const isConfirmed = await confirm({
+          title: shouldLock ? "Lock Forms" : "Unlock Forms",
+          message: `${shouldLock ? 'Lock' : 'Unlock'} breathing forms for ${targetIds.size} player(s)?`,
+          confirmText: shouldLock ? "Lock Forms" : "Unlock Forms",
+          variant: shouldLock ? "danger" : "info"
+      });
+      if (!isConfirmed) return;
+
+      try {
+          const promises = Array.from(targetIds).map(async (charId) => {
+              const char = await CharacterService.get(charId);
+              if (!char) return;
+              
+              const updatedForms = char.breathingForms.map(form => ({
+                  ...form,
+                  isLocked: shouldLock
+              }));
+
+              await CharacterService.update(charId, { breathingForms: updatedForms });
+          });
+
+          await Promise.all(promises);
+          showToast(`Forms ${shouldLock ? 'locked' : 'unlocked'} for ${targetIds.size} players.`, 'success');
+          setTargetIds(new Set());
+      } catch (error) {
+          showToast("Error updating form locks", 'error');
+      }
+  };
+
   const handleModifyHP = async (multiplier: number) => {
       if (!hpAmount || targetIds.size === 0) return;
       
@@ -349,6 +418,20 @@ export function DMView() {
                   icon={<Backpack size={18}/>} 
                   label="Items"
                   color="text-blue-500" 
+                />
+               <ToolTab 
+                  active={activeTool === 'actions'} 
+                  onClick={() => setActiveTool('actions')} 
+                  icon={<Swords size={18}/>} 
+                  label="Actions"
+                  color="text-indigo-500" 
+                />
+               <ToolTab 
+                  active={activeTool === 'forms'} 
+                  onClick={() => setActiveTool('forms')} 
+                  icon={<Lock size={18}/>} 
+                  label="Forms"
+                  color="text-gray-600" 
                 />
                <ToolTab 
                   active={activeTool === 'gold'} 
@@ -496,6 +579,94 @@ export function DMView() {
                                 <Backpack size={20} />
                                 Give to {targetIds.size} Players
                             </button>
+                       </motion.div>
+                   )}
+
+                   {activeTool === 'actions' && (
+                       <motion.div 
+                         key="actions"
+                         initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
+                         className="space-y-4"
+                       >
+                            <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-2">New Action Details</h3>
+                            <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm space-y-3">
+                                <input 
+                                    type="text" 
+                                    placeholder="Action Name"
+                                    value={newActionParams.name}
+                                    onChange={e => setNewActionParams({...newActionParams, name: e.target.value})}
+                                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg font-medium outline-none focus:ring-2 ring-indigo-100 transition-all"
+                                />
+                                <input 
+                                    type="text" 
+                                    placeholder="Description (optional)"
+                                    value={newActionParams.description}
+                                    onChange={e => setNewActionParams({...newActionParams, description: e.target.value})}
+                                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg text-sm outline-none focus:ring-2 ring-indigo-100 transition-all"
+                                />
+                                <div>
+                                    <label className="text-[10px] uppercase font-bold text-gray-400 mb-1 block">Action Type</label>
+                                    <div className="grid grid-cols-4 gap-2">
+                                        {(['main', 'bonus', 'reaction', 'free'] as const).map(type => (
+                                            <button
+                                                key={type}
+                                                onClick={() => setNewActionParams({...newActionParams, type})}
+                                                className={`p-2 text-xs font-bold uppercase rounded-lg border ${
+                                                    newActionParams.type === type
+                                                    ? 'bg-indigo-50 border-indigo-200 text-indigo-600 ring-1 ring-indigo-200'
+                                                    : 'bg-gray-50 border-gray-200 text-gray-400 hover:bg-gray-100'
+                                                }`}
+                                            >
+                                                {type}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <button 
+                                onClick={handleAddAction}
+                                disabled={targetIds.size === 0 || !newActionParams.name}
+                                className="w-full bg-indigo-500 text-white font-bold py-4 rounded-xl disabled:opacity-50 active:scale-[0.98] transition-all shadow-lg shadow-indigo-100 flex items-center justify-center gap-2"
+                            >
+                                <Swords size={20} />
+                                Add Action to {targetIds.size} Players
+                            </button>
+                       </motion.div>
+                   )}
+
+                   {activeTool === 'forms' && (
+                       <motion.div 
+                         key="forms"
+                         initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
+                         className="space-y-4"
+                       >
+                           <div className="text-center py-6">
+                               <Lock size={48} className="mx-auto text-gray-300 mb-4" />
+                               <h3 className="font-bold text-gray-700 text-lg mb-2">Form Management</h3>
+                               <p className="text-gray-400 text-sm mb-6 max-w-xs mx-auto">
+                                   Lock player breathing forms to prevent editing during combat.
+                               </p>
+                           </div>
+                           
+                           <div className="grid grid-cols-2 gap-4">
+                               <button 
+                                    onClick={() => handleLockForms(true)}
+                                    disabled={targetIds.size === 0}
+                                    className="bg-gray-800 hover:bg-gray-900 text-white font-bold py-4 rounded-xl disabled:opacity-50 active:scale-[0.98] transition-all shadow-lg shadow-gray-200 flex flex-col items-center justify-center gap-1"
+                                >
+                                    <span className="text-xl flex items-center gap-2"><Lock size={18}/> Lock</span>
+                                    <span className="text-xs opacity-75">All Forms</span>
+                                </button>
+                                <button 
+                                    onClick={() => handleLockForms(false)}
+                                    disabled={targetIds.size === 0}
+                                    className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-4 rounded-xl disabled:opacity-50 active:scale-[0.98] transition-all shadow-lg shadow-gray-100 flex flex-col items-center justify-center gap-1"
+                                >
+                                    <span className="text-xl flex items-center gap-2"><Lock size={18} className="opacity-50"/> Unlock</span>
+                                    <span className="text-xs opacity-75">All Forms</span>
+                                </button>
+                           </div>
                        </motion.div>
                    )}
 
