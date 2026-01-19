@@ -6,7 +6,7 @@ interface ConfirmOptions {
   message: string;
   confirmText?: string;
   cancelText?: string;
-  variant?: 'danger' | 'info';
+  variant?: 'danger' | 'info' | 'success';
 }
 
 interface ConfirmContextType {
@@ -78,6 +78,8 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
                     className={`flex-1 py-3 px-4 rounded-xl font-bold text-white shadow-lg transition-transform active:scale-95 ${
                       state.options.variant === 'danger' 
                         ? 'bg-red-500 hover:bg-red-600 shadow-red-200' 
+                        : state.options.variant === 'success'
+                        ? 'bg-green-500 hover:bg-green-600 shadow-green-200'
                         : 'bg-slayer-orange hover:bg-orange-600 shadow-orange-200'
                     }`}
                   >
