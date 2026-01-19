@@ -224,7 +224,7 @@ export const GameService = {
         maxHP: participant.maxHP,
         currentHP: participant.currentHP,
         initiative: 0,
-        isHidden: participant.type === 'npc' ? false : undefined
+        ...(participant.type === 'npc' ? { isHidden: false } : {})
       };
       
       await updateDoc(sessionRef, {
