@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../context/ToastContext";
+import { useConfirm } from "../../context/ConfirmContext";
 import { GameService } from "../../services/gameService";
 import { CharacterService } from "../../services/characterService";
 import type { GameSession } from "../../services/gameService";
@@ -20,6 +21,7 @@ const COMMON_EFFECTS = [
 
 export function DMView() {
   const { showToast } = useToast();
+  const { confirm } = useConfirm();
   const { user } = useAuth();
   const navigate = useNavigate();
   const [sessionCode, setSessionCode] = useState<string | null>(null);
@@ -72,7 +74,15 @@ export function DMView() {
   }, [sessionCode, navigate]);
 
   const handleEndSession = async () => {
-      if (!sessionCode || !confirm("Are you sure you want to end this session? All players will be disconnected.")) return;
+      if (!sessionCode) return;
+      const isConfirmed = await confirm({
+        title: "End Session?",
+        message: "Are you sure you want to end this session? All players will be disconnected.",
+        confirmText: "End Session",
+        variant: "danger"
+      });
+
+      if (!isConfirmed) return;
       
       try {
           await GameService.endSession(sessionCode);

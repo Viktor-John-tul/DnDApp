@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import type { RPGCharacter } from "../types";
 import { Flame, User as UserIcon } from "lucide-react";
+import { useConfirm } from "../context/ConfirmContext";
 
 interface Props {
   character: RPGCharacter;
@@ -8,6 +9,7 @@ interface Props {
 }
 
 export function CharacterCard({ character, onDelete }: Props) {
+  const { confirm } = useConfirm();
   return (
     <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-200 flex items-center gap-4 relative group">
       <Link to={`/character/${character.id}`} className="flex-1 flex items-center gap-4">
@@ -33,11 +35,18 @@ export function CharacterCard({ character, onDelete }: Props) {
         </div>
       </Link>
       
-      {/* Delete button (could be verify modal, simpler for now) */}
+      {/* Delete button */}
       <button 
-        onClick={(e) => {
+        onClick={async (e) => {
             e.preventDefault();
-            if(confirm('Are you sure you want to delete this character?')) {
+            const isConfirmed = await confirm({
+              title: "Delete Character",
+              message: "Are you sure you want to delete this character? This action cannot be undone.",
+              confirmText: "Delete",
+              variant: "danger"
+            });
+            
+            if(isConfirmed) {
                 character.id && onDelete(character.id);
             }
         }}

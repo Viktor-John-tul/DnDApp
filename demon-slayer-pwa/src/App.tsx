@@ -2,6 +2,7 @@ import { HashRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import { ToastProvider } from "./context/ToastContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
+import { ConfirmProvider } from "./context/ConfirmContext";
 import { LoginPage } from "./pages/LoginPage";
 import { Dashboard } from "./pages/Dashboard";
 import { CharacterCreation } from "./pages/CharacterCreation";
@@ -13,9 +14,10 @@ function App() {
   return (
     <AuthProvider>
       <ToastProvider>
-        <HashRouter>
-          <Routes>
-          <Route path="/login" element={<LoginPage />} />
+        <ConfirmProvider>
+          <HashRouter>
+            <Routes>
+            <Route path="/login" element={<LoginPage />} />
           
           <Route path="/" element={
             <ProtectedRoute>
@@ -46,8 +48,9 @@ function App() {
               <CharacterSheet />
             </ProtectedRoute>
           } />
-        </Routes>
-        </HashRouter>
+          </Routes>
+          </HashRouter>
+        </ConfirmProvider>
       </ToastProvider>
     </AuthProvider>
   );
