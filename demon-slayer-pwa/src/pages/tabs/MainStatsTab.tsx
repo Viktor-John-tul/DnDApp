@@ -24,7 +24,13 @@ interface Props {
 
 export function MainStatsTab({ character, onUpdate, readOnly }: Props) {
   const [showHealth, setShowHealth] = useState(false);
-  const [activeRoll, setActiveRoll] = useState<{label: string, modifier: number, mode: RollMode} | null>(null);
+  const [activeRoll, setActiveRoll] = useState<{
+        label: string; 
+        modifier: number; 
+        mode: RollMode;
+        diceCount?: number;
+        diceFace?: number;
+    } | null>(null);
 
   const isEncumbered = character.type === 'demon' ? false : Calculator.isEncumbered(character.strength, character.inventory);
   const proficiency = character.customProficiency ?? Calculator.getProficiencyBonus(character.level);
@@ -58,20 +64,16 @@ export function MainStatsTab({ character, onUpdate, readOnly }: Props) {
   const handleSurge = () => {
     if (readOnly || character.healingSurges <= 0) return;
     
-    // Roll d12 + Con Mod (min 1)
-    const surgeRoll = Math.floor(Math.random() * 12) + 1;
-    const conMod = Calculator.getModifier(character.constitution);
-    const healAmount = Math.max(1, surgeRoll + conMod);
-    
-    const newHP = Math.min(maxHP, character.currentHP + healAmount);
-    
-    onUpdate({
-        healingSurges: character.healingSurges - 1,
-        currentHP: newHP
+    // Configure Roll for D10 + CON Mod
+    setActiveRoll({
+        label: "Healing Surge",
+        modifier: Calculator.getModifier(character.constitution),
+        mode: 'normal',
+        diceCount: 1,
+        diceFace: 10
     });
     
-    // Maybe show a quick toast or alert about the surge here?
-    // For now simple update logic.
+    // We update stats via callback after roll completes
     setShowHealth(false);
   };
 
@@ -183,7 +185,19 @@ export function MainStatsTab({ character, onUpdate, readOnly }: Props) {
             mode={activeRoll.mode} 
             modifier={activeRoll.modifier} 
             label={activeRoll.label} 
-            onComplete={() => {
+            diceCount={activeRoll.diceCount}
+            diceFace={activeRoll.diceFace}
+            onComplete={(total) => {
+                 if (total !== undefined && activeRoll.label === "Healing Surge") {
+                     // Apply Healing Surge Result
+                     const healAmount = Math.max(1, total + activeRoll.modifier);
+                     const newHP = Math.min(maxHP, character.currentHP + healAmount);
+                     onUpdate({
+                        healingSurges: character.healingSurges - 1,
+                        currentHP: newHP
+                     });
+                 }
+
                  // Consume One-Time Effects
                  const hasOneTime = character.statusEffects?.some(e => e.type === 'advantage' || e.type === 'disadvantage');
                  if (hasOneTime) {
