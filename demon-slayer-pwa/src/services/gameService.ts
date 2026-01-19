@@ -192,6 +192,29 @@ export const GameService = {
     });
   },
 
+  addToCombat: async (code: string, participant: { id: string, name: string, type: 'player' | 'npc', photoUrl?: string | null, maxHP?: number, currentHP?: number }) => {
+    const sessionRef = doc(db, "sessions", code);
+    const sessionSnap = await getDoc(sessionRef);
+    
+    if (!sessionSnap.exists()) return;
+    
+    const session = sessionSnap.data() as GameSession;
+    if (!session.combat) return;
+    
+    // Check if already in combat
+    if (session.combat.participants.some(p => p.id === participant.id)) return;
+    
+    const newParticipant = {
+      ...participant,
+      initiative: 0,
+      isHidden: participant.type === 'npc' ? false : undefined
+    };
+    
+    await updateDoc(sessionRef, {
+      'combat.participants': [...session.combat.participants, newParticipant]
+    });
+  },
+
   updateInitiative: async (code: string, participantId: string, initiative: number) => {
     const sessionRef = doc(db, "sessions", code);
     const sessionSnap = await getDoc(sessionRef);

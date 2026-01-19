@@ -54,11 +54,43 @@ export function CombatManager({ session, sessionCode }: CombatManagerProps) {
       if (!npc) return;
       
       await GameService.joinGame(sessionCode, npc);
+      
+      // Add to combat participants
+      await GameService.addToCombat(sessionCode, {
+        id: npc.id!,
+        name: npc.name,
+        type: 'npc',
+        photoUrl: npc.photoUrl,
+        maxHP: npc.maxHP,
+        currentHP: npc.currentHP
+      });
+      
       showToast(`${npc.name} added to combat`, "success");
       setSelectedNpcs(prev => new Set([...prev, npcId]));
     } catch (error) {
       console.error("Failed to add NPC", error);
       showToast("Failed to add NPC", "error");
+    }
+  };
+
+  const handleAddPlayer = async (playerId: string) => {
+    try {
+      const player = players.find(p => p.id === playerId);
+      if (!player) return;
+
+      await GameService.addToCombat(sessionCode, {
+        id: player.id,
+        name: player.name,
+        type: 'player',
+        photoUrl: player.photoUrl,
+        maxHP: player.maxHP,
+        currentHP: player.currentHP
+      });
+
+      showToast(`${player.name} added to combat`, "success");
+    } catch (error) {
+      console.error("Failed to add player", error);
+      showToast("Failed to add player", "error");
     }
   };
 
@@ -131,6 +163,28 @@ export function CombatManager({ session, sessionCode }: CombatManagerProps) {
           </button>
         </div>
 
+        {/* Connected Players */}
+        {players.length > 0 && (
+          <div className="bg-white rounded-lg p-4 border border-gray-200">
+            <h4 className="font-bold text-gray-700 mb-3">Connected Players ({players.length})</h4>
+            <div className="space-y-2">
+              {players.map(player => (
+                <div key={player.id} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    {player.photoUrl && (
+                      <img src={player.photoUrl} alt={player.name} className="w-8 h-8 rounded-full object-cover" />
+                    )}
+                    <div>
+                      <div className="font-bold text-sm">{player.name}</div>
+                      <div className="text-xs text-gray-500">Lv.{player.level} • {player.currentHP}/{player.maxHP} HP</div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* NPC Selection */}
         <div className="bg-white rounded-lg p-4 border border-gray-200">
           <h4 className="font-bold text-gray-700 mb-3">Available NPCs</h4>
@@ -189,7 +243,7 @@ export function CombatManager({ session, sessionCode }: CombatManagerProps) {
           <h4 className="font-bold text-gray-700 text-sm uppercase tracking-wide">Combatants ({combat.participants.length})</h4>
           {combat.participants.length === 0 ? (
             <div className="text-center py-8 text-gray-400 text-sm">
-              No participants yet. Connect players to the session first.
+              No participants added yet. Add players or NPCs below.
             </div>
           ) : (
             combat.participants.map(participant => (
@@ -230,6 +284,62 @@ export function CombatManager({ session, sessionCode }: CombatManagerProps) {
             ))
           )}
         </div>
+
+        {/* Add Players */}
+        {players.filter(p => !combat.participants.some(cp => cp.id === p.id)).length > 0 && (
+          <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+            <h4 className="font-bold text-blue-900 mb-3 text-sm">Add Connected Players</h4>
+            <div className="space-y-2">
+              {players.filter(p => !combat.participants.some(cp => cp.id === p.id)).map(player => (
+                <div key={player.id} className="flex items-center justify-between p-2 bg-white rounded-lg">
+                  <div className="flex items-center gap-2">
+                    {player.photoUrl && (
+                      <img src={player.photoUrl} alt={player.name} className="w-8 h-8 rounded-full object-cover" />
+                    )}
+                    <div>
+                      <div className="font-bold text-sm">{player.name}</div>
+                      <div className="text-xs text-gray-500">Lv.{player.level}</div>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleAddPlayer(player.id)}
+                    className="text-xs font-bold bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700"
+                  >
+                    Add
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Add NPCs */}
+        {npcs.length > 0 && (
+          <div className="bg-purple-50 rounded-lg p-4 border border-purple-200">
+            <h4 className="font-bold text-purple-900 mb-3 text-sm">Add NPCs</h4>
+            <div className="space-y-2">
+              {npcs.filter(npc => !combat.participants.some(cp => cp.id === npc.id)).map(npc => (
+                <div key={npc.id} className="flex items-center justify-between p-2 bg-white rounded-lg">
+                  <div className="flex items-center gap-2">
+                    {npc.photoUrl && (
+                      <img src={npc.photoUrl} alt={npc.name} className="w-8 h-8 rounded-full object-cover" />
+                    )}
+                    <div>
+                      <div className="font-bold text-sm">{npc.name}</div>
+                      <div className="text-xs text-gray-500">{npc.characterClass} • Lv.{npc.level}</div>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleAddNpc(npc.id!)}
+                    className="text-xs font-bold bg-purple-600 text-white px-3 py-1 rounded hover:bg-purple-700"
+                  >
+                    Add
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Start Button */}
         <button
