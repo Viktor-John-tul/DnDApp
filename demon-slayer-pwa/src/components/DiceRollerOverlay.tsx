@@ -10,6 +10,7 @@ interface Props {
   onComplete: (total?: number) => void;
   diceCount?: number; // For non-d20 rolls
   diceFace?: number;
+  extraDice?: { count: number, face: number }[]; // Support mixed dice types
 }
 
 const DiceIcon = ({ face, className }: { face: number, className: string }) => {
@@ -44,15 +45,36 @@ const DiceIcon = ({ face, className }: { face: number, className: string }) => {
     );
 };
 
-export function DiceRollerOverlay({ mode, modifier, label, onComplete, diceCount, diceFace }: Props) {
+export function DiceRollerOverlay({ mode, modifier, label, onComplete, diceCount, diceFace, extraDice }: Props) {
   // Defaults
   let count = diceCount || 1;
   const face = diceFace || 20;
 
-  // For D20 rolls with Advantage/Disadvantage, we always roll 2 dice instead of 1
-  if (!diceCount && (mode === 'advantage' || mode === 'disadvantage')) {
-      count = 2;
+  // Build dice configuration array
+  // If we have extraDice or diceCount, we treat it as a "Damage Roll" (sum of dice)
+  // otherwise, default to d20 logic.
+  let diceConfig: number[] = [];
+  
+  if (diceCount && diceFace) {
+      // Base dice
+      for(let i=0; i<diceCount; i++) diceConfig.push(diceFace);
+      // Extra dice
+      if (extraDice) {
+          extraDice.forEach(d => {
+              for(let i=0; i<d.count; i++) diceConfig.push(d.face);
+          });
+      }
+  } else {
+      // D20 Logic
+      if (mode === 'advantage' || mode === 'disadvantage') {
+          diceConfig = [20, 20];
+      } else {
+          diceConfig = [20];
+      }
   }
+
+  // Count comes from config length now for animation purposes
+  count = diceConfig.length;
 
   const [currentValues, setCurrentValues] = useState<number[]>(Array(count).fill(1));
   const [finalResult, setFinalResult] = useState<{total: number, rolls: number[], isCrit: boolean, droppedRolls?: number[]} | null>(null);
@@ -61,8 +83,8 @@ export function DiceRollerOverlay({ mode, modifier, label, onComplete, diceCount
   useEffect(() => {
     // Start rolling animation
     const interval = setInterval(() => {
-        // Update all dice with random values between 1 and `face`
-        setCurrentValues(Array.from({length: count}, () => Math.floor(Math.random() * face) + 1));
+        // Update all dice with random values based on their specific face in diceConfig
+        setCurrentValues(diceConfig.map(f => Math.floor(Math.random() * f) + 1));
     }, 60);
 
     // Determine result after 1s
@@ -76,8 +98,8 @@ export function DiceRollerOverlay({ mode, modifier, label, onComplete, diceCount
 
       // Logic split: Generic Multi-Dice vs Standard D20
       if (diceCount && diceFace) {
-          // Manually roll individual dice
-          rolls = Array.from({length: count}, () => Math.floor(Math.random() * face) + 1);
+          // Manually roll individual dice based on config
+          rolls = diceConfig.map(f => Math.floor(Math.random() * f) + 1);
           const sum = rolls.reduce((a, b) => a + b, 0);
           total = sum + modifier;
           isCrit = false;
@@ -111,7 +133,7 @@ export function DiceRollerOverlay({ mode, modifier, label, onComplete, diceCount
       clearInterval(interval);
       clearTimeout(timer);
     };
-  }, [mode, modifier, count, face, diceCount, diceFace]);
+  }, [mode, modifier, count, face, diceCount, diceFace, JSON.stringify(extraDice)]); // Add extraDice dep
 
   // Helper to check if a die is "dropped" in adv/disadv
   const isDropped = (val: number) => {
@@ -157,10 +179,13 @@ export function DiceRollerOverlay({ mode, modifier, label, onComplete, diceCount
         <div className="flex flex-wrap justify-center items-center gap-4 mb-8">
             {currentValues.map((val, idx) => {
                 const dropped = isDropped(val);
+                // Use the face from config for correct icon
+                const currentFace = diceConfig[idx] || 20;
+                
                 return (
                     <div key={idx} className={`relative inline-flex items-center justify-center w-32 h-32 transition-all duration-500 ${dropped ? 'opacity-20 blur-[1px] saturate-0 scale-90' : 'scale-105'}`}>
                         <DiceIcon 
-                            face={face} 
+                            face={currentFace} 
                             className="absolute inset-0 w-full h-full text-slayer-orange opacity-20 animate-spin-slow"
                         />
                         <span 

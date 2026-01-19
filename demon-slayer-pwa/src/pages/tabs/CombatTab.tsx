@@ -23,6 +23,7 @@ interface ActiveRollState {
   isAttack?: boolean;
   diceCount?: number;
   diceFace?: number;
+  extraDice?: { count: number, face: number }[];
   pendingForm?: BreathingForm;
   pendingRefCost?: number;
 }
@@ -156,12 +157,19 @@ export function CombatTab({ character, onUpdate, readOnly }: Props) {
 
           // Apply Active Buff if exists
           // Prevent Regen Buffs from incorrectly adding to damage dice
+          const extraDice: { count: number, face: number }[] = [];
+          
           if (character.activeBuff?.activeBuffDiceCount && !character.activeBuff.isRegenBuff && (character.activeBuff.activeBuffRoundsRemaining || 0) > 0) {
-              count += character.activeBuff.activeBuffDiceCount;
-              // What if face is different? "increases the amount of dice rolled". We assume same face or just add count.
-              // If face is different, it's complicated. Let's assume we add dice of the form's face?
-              // Or the buff's face? "adds an effect... which increses the amount of dice".
-              // Let's assume simplicity: It adds to the COUNT.
+              const buffCount = character.activeBuff.activeBuffDiceCount;
+              const buffFace = character.activeBuff.activeBuffDiceFace || face; // Fallback to form face if undefined
+
+              if (buffFace === face) {
+                  // If faces match, just add to the main pool
+                  count += buffCount;
+              } else {
+                  // If faces differ, add to extra dice
+                  extraDice.push({ count: buffCount, face: buffFace });
+              }
           }
           
           setTimeout(() => {
@@ -171,6 +179,7 @@ export function CombatTab({ character, onUpdate, readOnly }: Props) {
                 isDamage: true,
                 diceCount: count,
                 diceFace: face,
+                extraDice: extraDice,
                 pendingForm: form
             });
           }, 300);
@@ -811,6 +820,7 @@ export function CombatTab({ character, onUpdate, readOnly }: Props) {
             label={activeRoll.label} 
             diceCount={activeRoll.diceCount}
             diceFace={activeRoll.diceFace}
+            extraDice={activeRoll.extraDice}
             onComplete={handleRollComplete}
         />
       )}
