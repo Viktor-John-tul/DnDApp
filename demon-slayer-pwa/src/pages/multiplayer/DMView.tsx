@@ -33,11 +33,12 @@ export function DMView() {
   const [selectedEffect, setSelectedEffect] = useState<string | null>(null);
   const [targetIds, setTargetIds] = useState<Set<string>>(new Set());
   const [applyingEffect, setApplyingEffect] = useState(false);
-  const [activeTool, setActiveTool] = useState<'effects' | 'items' | 'gold' | 'notes'>('effects');
+  const [activeTool, setActiveTool] = useState<'effects' | 'items' | 'gold' | 'notes' | 'health'>('effects');
 
   // Item Adding State
   const [newItemParams, setNewItemParams] = useState({ name: "", quantity: 1, weight: 0 });
   const [goldAmount, setGoldAmount] = useState(0);
+  const [hpAmount, setHpAmount] = useState(0);
   
   // Note Editing State
   const [dmNoteBuffer, setDmNoteBuffer] = useState("");
@@ -218,6 +219,38 @@ export function DMView() {
       }
   };
 
+  const handleModifyHP = async (multiplier: number) => {
+      if (!hpAmount || targetIds.size === 0) return;
+      
+      const isHealing = multiplier > 0;
+      const isConfirmed = await confirm({
+          title: isHealing ? "Heal Players" : "Deal Damage",
+          message: `${isHealing ? 'Heal' : 'Deal'} ${Math.abs(hpAmount)} HP to ${targetIds.size} player(s)?`,
+          confirmText: isHealing ? "Heal" : "Deal Damage",
+          variant: isHealing ? "success" : "danger"
+      });
+      if (!isConfirmed) return;
+
+      try {
+          const promises = Array.from(targetIds).map(async (charId) => {
+              const char = await CharacterService.get(charId);
+              if (!char) return;
+
+              let newHP = char.currentHP + (hpAmount * multiplier);
+              newHP = Math.max(0, Math.min(newHP, char.maxHP));
+              
+              await CharacterService.update(charId, { currentHP: newHP });
+          });
+
+          await Promise.all(promises);
+          showToast(`Applied ${isHealing ? 'Healing' : 'Damage'} to ${targetIds.size} players.`, 'success');
+          setHpAmount(0);
+          setTargetIds(new Set());
+      } catch (error) {
+          showToast("Error updating HP", 'error');
+      }
+  };
+
   const openNoteEditor = async () => {
     if (targetIds.size !== 1) {
         showToast("Select exactly one player to edit notes", 'info');
@@ -299,6 +332,13 @@ export function DMView() {
                   color="text-slayer-orange" 
                 />
                <ToolTab 
+                  active={activeTool === 'health'} 
+                  onClick={() => setActiveTool('health')} 
+                  icon={<Heart size={18}/>} 
+                  label="Health"
+                  color="text-red-500" 
+                />
+               <ToolTab 
                   active={activeTool === 'items'} 
                   onClick={() => setActiveTool('items')} 
                   icon={<Backpack size={18}/>} 
@@ -361,6 +401,46 @@ export function DMView() {
                                             </span>
                                         </>
                                     )}
+                                </button>
+                           </div>
+                       </motion.div>
+                   )}
+
+                   {activeTool === 'health' && (
+                       <motion.div 
+                         key="health"
+                         initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
+                         className="space-y-4"
+                       >
+                           <div className="text-center py-6">
+                               <Heart size={48} className="mx-auto text-red-200 mb-4 animate-pulse" />
+                               <input 
+                                   type="number" 
+                                   placeholder="0"
+                                   min="0"
+                                   value={hpAmount === 0 ? '' : hpAmount}
+                                   onChange={e => setHpAmount(Math.abs(parseInt(e.target.value)))}
+                                   className="w-full max-w-[200px] text-center text-5xl font-black bg-transparent border-b-2 border-gray-200 focus:border-red-400 outline-none p-2 text-gray-800 placeholder-gray-300 mx-auto block"
+                               />
+                               <p className="text-gray-400 text-sm mt-2 font-bold uppercase tracking-widest">Hit Points</p>
+                           </div>
+                           
+                           <div className="grid grid-cols-2 gap-4">
+                               <button 
+                                    onClick={() => handleModifyHP(-1)}
+                                    disabled={targetIds.size === 0 || !hpAmount}
+                                    className="bg-red-500 hover:bg-red-600 text-white font-bold py-4 rounded-xl disabled:opacity-50 active:scale-[0.98] transition-all shadow-lg shadow-red-200 flex flex-col items-center justify-center gap-1"
+                                >
+                                    <span className="text-xl">Damage</span>
+                                    <span className="text-xs opacity-75">(-{hpAmount} HP)</span>
+                                </button>
+                                <button 
+                                    onClick={() => handleModifyHP(1)}
+                                    disabled={targetIds.size === 0 || !hpAmount}
+                                    className="bg-green-500 hover:bg-green-600 text-white font-bold py-4 rounded-xl disabled:opacity-50 active:scale-[0.98] transition-all shadow-lg shadow-green-200 flex flex-col items-center justify-center gap-1"
+                                >
+                                    <span className="text-xl">Heal</span>
+                                    <span className="text-xs opacity-75">(+{hpAmount} HP)</span>
                                 </button>
                            </div>
                        </motion.div>

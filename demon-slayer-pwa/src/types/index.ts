@@ -133,6 +133,7 @@ export interface RPGCharacter {
   backstory: string;
   notes: string;
   dmNotes?: string;
+  activeSessionCode?: string; // For persistent session connections
   
   // Timestamps
   createdAt: number; // Unix timestamp

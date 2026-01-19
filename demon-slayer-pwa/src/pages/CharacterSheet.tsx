@@ -23,7 +23,6 @@ export function CharacterSheet() {
   const [character, setCharacter] = useState<RPGCharacter | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<TabId>('stats');
-  const [sessionCode, setSessionCode] = useState<string | null>(null);
   const [showJoinModal, setShowJoinModal] = useState(false);
   
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -65,17 +64,6 @@ export function CharacterSheet() {
   }, [character]);
 
   useEffect(() => {
-     if (sessionCode && character) {
-         // Debounce sync? or just fire and forget. 
-         // Firestore writes are async. Frequent writes might be costly but for PWA demo it is fine.
-         // Let's rely on handleUpdate mostly, but to be safe, we can sync here too.
-         // Actually, if we use handleUpdate, we ensure we only sync when DATA changes, not when UI state changes.
-         // But handleUpdate is passed down.
-         // Let's hook into handleUpdate.
-     }
-  }, [character, sessionCode]);
-
-  useEffect(() => {
     if (!id || !user) return;
     
     // Subscribe to realtime updates
@@ -113,22 +101,31 @@ export function CharacterSheet() {
         CharacterService.update(id, updates);
         
         // 3. Sync to Game Session
-        if (sessionCode) {
-             GameService.syncCharacter(sessionCode, updatedChar);
+        if (updatedChar.activeSessionCode) {
+             GameService.syncCharacter(updatedChar.activeSessionCode, updatedChar);
         }
     }, 1000);
   };
 
   const handleJoinSession = async (code: string) => {
-    if (!character) return;
+    if (!character || !id) return;
     try {
         await GameService.joinGame(code, character);
-        setSessionCode(code);
+        // Persist connection
+        await CharacterService.update(id, { activeSessionCode: code });
         setShowJoinModal(false);
+        showToast(`Connected to ${code}`, 'success');
     } catch (err) {
         console.error(err);
         showToast("Failed to join. Check code.", 'error');
     }
+  };
+
+  const handleDisconnect = async () => {
+      if (!id) return;
+      await CharacterService.update(id, { activeSessionCode: "" });
+      setShowJoinModal(false);
+      showToast("Disconnected", 'info');
   };
 
   if (loading) {
@@ -167,7 +164,7 @@ export function CharacterSheet() {
             
             <button 
                 onClick={() => setShowJoinModal(true)}
-                className={`p-2 rounded-full ${sessionCode ? 'text-green-500 bg-green-50' : 'text-gray-400 hover:bg-gray-100'}`}
+                className={`p-2 rounded-full ${character.activeSessionCode ? 'text-green-500 bg-green-50' : 'text-gray-400 hover:bg-gray-100'}`}
             >
                 <Wifi size={20} />
             </button>
@@ -212,34 +209,62 @@ export function CharacterSheet() {
         {showJoinModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
               <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl">
-                  <h3 className="font-bold text-lg mb-4">Join Session</h3>
-                  <input 
-                    autoFocus
-                    placeholder="Enter Code (e.g. A1B2C3)"
-                    className="w-full p-3 border border-gray-300 rounded-xl mb-4 text-center font-mono uppercase text-xl font-bold tracking-widest"
-                    onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                            handleJoinSession((e.target as HTMLInputElement).value.toUpperCase());
-                        }
-                    }}
-                  />
-                  <div className="flex gap-2">
-                      <button 
-                        onClick={() => setShowJoinModal(false)}
-                        className="flex-1 py-3 font-bold text-gray-500 bg-gray-100 rounded-xl"
-                      >
-                          Cancel
-                      </button>
-                      <button 
-                         onClick={() => {
-                             const input = document.querySelector('input[placeholder*="Code"]') as HTMLInputElement;
-                             if(input) handleJoinSession(input.value.toUpperCase());
-                         }}
-                        className="flex-1 py-3 font-bold text-white bg-slayer-orange rounded-xl shadow-lg shadow-orange-200"
-                      >
-                          Connect
-                      </button>
-                  </div>
+                  {character.activeSessionCode ? (
+                       <>
+                        <h3 className="font-bold text-lg mb-4 text-center">Connected</h3>
+                        <div className="mb-6 text-center">
+                            <p className="text-gray-500 mb-2">Current Session</p>
+                            <p className="text-4xl font-black font-mono tracking-widest text-slayer-orange">
+                                {character.activeSessionCode}
+                            </p>
+                        </div>
+                        <div className="flex gap-2">
+                            <button 
+                                onClick={() => setShowJoinModal(false)}
+                                className="flex-1 py-3 font-bold text-gray-500 bg-gray-100 rounded-xl"
+                            >
+                                Close
+                            </button>
+                            <button 
+                                onClick={handleDisconnect}
+                                className="flex-1 py-3 font-bold text-white bg-red-500 rounded-xl shadow-lg shadow-red-200"
+                            >
+                                Disconnect
+                            </button>
+                        </div>
+                       </>
+                  ) : (
+                      <>
+                        <h3 className="font-bold text-lg mb-4">Join Session</h3>
+                        <input 
+                            autoFocus
+                            placeholder="Enter Code (e.g. A1B2C3)"
+                            className="w-full p-3 border border-gray-300 rounded-xl mb-4 text-center font-mono uppercase text-xl font-bold tracking-widest"
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                    handleJoinSession((e.target as HTMLInputElement).value.toUpperCase());
+                                }
+                            }}
+                        />
+                        <div className="flex gap-2">
+                            <button 
+                                onClick={() => setShowJoinModal(false)}
+                                className="flex-1 py-3 font-bold text-gray-500 bg-gray-100 rounded-xl"
+                            >
+                                Cancel
+                            </button>
+                            <button 
+                                onClick={() => {
+                                    const input = document.querySelector('input[placeholder*="Code"]') as HTMLInputElement;
+                                    if(input) handleJoinSession(input.value.toUpperCase());
+                                }}
+                                className="flex-1 py-3 font-bold text-white bg-slayer-orange rounded-xl shadow-lg shadow-orange-200"
+                            >
+                                Connect
+                            </button>
+                        </div>
+                      </>
+                  )}
               </div>
           </div>
       )}
