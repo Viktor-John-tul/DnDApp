@@ -24,6 +24,7 @@ export interface GameSession {
 export interface PlayerSyncData {
   id: string;
   name: string;
+  type?: 'slayer' | 'demon';
   currentHP: number;
   maxHP: number;
   currentBreaths: number;
@@ -117,6 +118,7 @@ export const GameService = {
     const playerData: PlayerSyncData = {
       id: charId,
       name: character.name,
+      type: character.type,
       currentHP: character.currentHP,
       maxHP: character.maxHP || character.currentHP,
       currentBreaths: character.currentBreaths,
@@ -127,6 +129,18 @@ export const GameService = {
     await updateDoc(sessionRef, {
       [`players.${charId}`]: playerData
     });
+  },
+
+  // Leave a game
+  leaveGame: async (code: string, charId: string) => {
+      try {
+          const sessionRef = doc(db, "sessions", code);
+          await updateDoc(sessionRef, {
+              [`players.${charId}`]: deleteField()
+          });
+      } catch (err) {
+          console.error("Error leaving game:", err);
+      }
   },
 
   // Sync character updates
@@ -138,6 +152,7 @@ export const GameService = {
      const playerData: PlayerSyncData = {
       id: charId,
       name: character.name,
+      type: character.type,
       currentHP: character.currentHP,
       maxHP: character.maxHP || character.currentHP,
       currentBreaths: character.currentBreaths,
@@ -147,14 +162,6 @@ export const GameService = {
 
     await updateDoc(sessionRef, {
       [`players.${charId}`]: playerData
-    });
-  },
-
-  // Leave game
-  leaveGame: async (code: string, playerId: string) => {
-    const sessionRef = doc(db, "sessions", code);
-    await updateDoc(sessionRef, {
-      [`players.${playerId}`]: deleteField()
     });
   },
 

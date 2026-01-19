@@ -804,18 +804,20 @@ export function DMView() {
                          </div>
 
                          {/* SP/Breath */}
-                         <div>
-                             <div className="flex justify-between text-xs font-bold text-gray-500 mb-1">
-                                 <span className="flex items-center gap-1"><Wind size={12} className="text-cyan-500"/> Breath</span>
-                                 <span>{player.currentBreaths} / {player.maxBreaths}</span>
+                         {(player.type !== 'demon') && player.maxBreaths > 0 && (
+                             <div>
+                                 <div className="flex justify-between text-xs font-bold text-gray-500 mb-1">
+                                     <span className="flex items-center gap-1"><Wind size={12} className="text-cyan-500"/> Breath</span>
+                                     <span>{player.currentBreaths} / {player.maxBreaths}</span>
+                                 </div>
+                                 <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                                     <div 
+                                        className={`h-full transition-all duration-500 ${player.currentBreaths < 0 ? 'bg-red-600' : 'bg-cyan-500'}`}
+                                        style={{ width: `${Math.min(100, Math.max(0, (player.currentBreaths / player.maxBreaths) * 100))}%` }}
+                                     />
+                                 </div>
                              </div>
-                             <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                                 <div 
-                                    className={`h-full transition-all duration-500 ${player.currentBreaths < 0 ? 'bg-red-600' : 'bg-cyan-500'}`}
-                                    style={{ width: `${Math.min(100, Math.max(0, (player.currentBreaths / player.maxBreaths) * 100))}%` }}
-                                 />
-                             </div>
-                         </div>
+                         )}
                      </div>
                  </div>
                  </div>

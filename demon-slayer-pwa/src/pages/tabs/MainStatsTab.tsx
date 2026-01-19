@@ -89,7 +89,9 @@ export function MainStatsTab({ character, onUpdate, readOnly }: Props) {
 
       {/* Conditions */}
       <div className="flex flex-wrap gap-2">
-        <ConditionBadge label={character.breathingStyleName || "Breathing Style"} active color="orange" icon={<Wind size={12}/>} />
+        {character.type !== 'demon' && (
+            <ConditionBadge label={character.breathingStyleName || "Breathing Style"} active color="orange" icon={<Wind size={12}/>} />
+        )}
         {isEncumbered && <ConditionBadge label="Encumbered" active color="red" icon={<PersonStanding size={12}/>} />}
         {character.statusEffects?.map(e => (
              <ConditionBadge key={e.id} label={e.name} active color={e.type === 'condition' ? 'blue' : 'orange'} icon={<Zap size={12}/>} />

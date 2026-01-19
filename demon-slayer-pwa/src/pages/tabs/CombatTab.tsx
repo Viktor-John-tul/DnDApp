@@ -177,6 +177,22 @@ export function CombatTab({ character, onUpdate, readOnly, isDM }: Props) {
                   extraDice.push({ count: buffCount, face: buffFace });
               }
           }
+
+          // Check for MULTIPLE Active Buffs 
+          if (character.activeBuffs) {
+              character.activeBuffs.forEach(buff => {
+                  if (buff.activeBuffDiceCount && !buff.isRegenBuff && (buff.activeBuffRoundsRemaining || 0) > 0) {
+                      const buffCount = buff.activeBuffDiceCount;
+                      const buffFace = buff.activeBuffDiceFace || face;
+
+                      if (buffFace === face) {
+                          count += buffCount;
+                      } else {
+                          extraDice.push({ count: buffCount, face: buffFace });
+                      }
+                  }
+              });
+          }
           
           setTimeout(() => {
               setActiveRoll({
@@ -196,7 +212,7 @@ export function CombatTab({ character, onUpdate, readOnly, isDM }: Props) {
       if (form.effectType === 'attackBuff' || form.effectType === 'advantageBuff') {
           const updates: Partial<RPGCharacter> = {};
           
-          updates.activeBuff = {
+          const newBuff = {
               activeBuffFormID: form.id,
               activeBuffName: form.name,
               activeBuffDiceCount: form.effectType === 'attackBuff' ? form.diceCount : null,
@@ -204,6 +220,9 @@ export function CombatTab({ character, onUpdate, readOnly, isDM }: Props) {
               activeBuffRoundsRemaining: form.durationRounds,
               isAdvantageBuff: form.effectType === 'advantageBuff'
           };
+
+          // Stack buffs instead of replacing
+          updates.activeBuffs = [...(character.activeBuffs || []), newBuff];
           
           onUpdate(updates);
           showToast(`Buff Applied: ${form.name}!`, 'success');
@@ -215,7 +234,7 @@ export function CombatTab({ character, onUpdate, readOnly, isDM }: Props) {
           // If duration > 0, treat as Regeneration Buff (Demon Style or otherwise)
           if (form.durationRounds > 0) {
               const updates: Partial<RPGCharacter> = {};
-              updates.activeBuff = {
+              const newBuff = {
                   activeBuffFormID: form.id,
                   activeBuffName: form.name,
                   activeBuffDiceCount: form.diceCount,
@@ -223,6 +242,8 @@ export function CombatTab({ character, onUpdate, readOnly, isDM }: Props) {
                   activeBuffRoundsRemaining: form.durationRounds,
                   isRegenBuff: true
               };
+
+              updates.activeBuffs = [...(character.activeBuffs || []), newBuff];
               onUpdate(updates);
               showToast(`Regeneration Applied: ${form.name}!`, 'success');
               return;
@@ -338,16 +359,21 @@ export function CombatTab({ character, onUpdate, readOnly, isDM }: Props) {
             currentHP: newHP
         };
 
-        // If this was a Regen Buff Roll (Active), decrement duration
-        if (character.activeBuff?.isRegenBuff && activeRoll.label === "Regeneration") {
-             const remaining = (character.activeBuff.activeBuffRoundsRemaining || 0) - 1;
-             if (remaining <= 0) {
-                 updates.activeBuff = null; // Expire
-             } else {
-                 updates.activeBuff = {
-                     ...character.activeBuff,
-                     activeBuffRoundsRemaining: remaining
-                 };
+        // If this was a Regen Buff Roll (Active), decrement matching duration
+        if (activeRoll.label === "Regeneration" && character.activeBuffs && activeRoll.pendingForm) {
+             const matchingIndex = character.activeBuffs.findIndex(b => b.activeBuffName === activeRoll.pendingForm?.name);
+             
+             if (matchingIndex !== -1) {
+                 const newBuffs = [...character.activeBuffs];
+                 const buff = newBuffs[matchingIndex];
+                 const remaining = (buff.activeBuffRoundsRemaining || 0) - 1;
+                 
+                 if (remaining <= 0) {
+                     newBuffs.splice(matchingIndex, 1);
+                 } else {
+                     newBuffs[matchingIndex] = { ...buff, activeBuffRoundsRemaining: remaining };
+                 }
+                 updates.activeBuffs = newBuffs;
              }
         }
 
@@ -427,38 +453,42 @@ export function CombatTab({ character, onUpdate, readOnly, isDM }: Props) {
         ))}
       </div>
 
-      {/* Active Form Buff (Regen/Attack/Advantage) */}
-      {character.activeBuff?.activeBuffName && (character.activeBuff.activeBuffRoundsRemaining || 0) > 0 && (
-         <div className="bg-orange-50 border border-orange-200 p-3 rounded-xl mb-4 flex justify-between items-center animate-fade-in shadow-sm">
+      {/* Active Form Buffs (Regen/Attack/Advantage) */}
+      <div className="space-y-2">
+      {(character.activeBuffs || []).filter(b => (b.activeBuffRoundsRemaining || 0) > 0).map((buff, i) => (
+         <div key={i} className="bg-orange-50 border border-orange-200 p-3 rounded-xl flex justify-between items-center animate-fade-in shadow-sm">
              <div className="flex items-center gap-3">
                  <div className="p-2 bg-white rounded-lg text-slayer-orange border border-orange-100 shadow-sm">
-                     {character.activeBuff.isRegenBuff ? <Heart size={20} /> : (character.activeBuff.isAdvantageBuff ? <Shield size={20} /> : <Zap size={20} />)}
+                     {buff.isRegenBuff ? <Heart size={20} /> : (buff.isAdvantageBuff ? <Shield size={20} /> : <Zap size={20} />)}
                  </div>
                  <div className="min-w-0">
                      <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Active Art Effect</p>
-                     <h3 className="font-bold text-gray-800 leading-tight truncate">{character.activeBuff.activeBuffName}</h3>
+                     <h3 className="font-bold text-gray-800 leading-tight truncate">{buff.activeBuffName}</h3>
                      <div className="flex items-center gap-1.5 mt-0.5">
                         <span className="text-xs text-orange-600 font-bold bg-orange-100 px-1.5 py-0.5 rounded">
-                            {character.activeBuff.activeBuffRoundsRemaining} Rounds
+                            {buff.activeBuffRoundsRemaining} Rounds
                         </span>
-                        {character.activeBuff.activeBuffDiceCount && !character.activeBuff.isAdvantageBuff && (
+                        {buff.activeBuffDiceCount && !buff.isAdvantageBuff && (
                             <span className="text-xs text-gray-500 font-bold">
-                                ({character.activeBuff.activeBuffDiceCount}d{character.activeBuff.activeBuffDiceFace})
+                                ({buff.activeBuffDiceCount}d{buff.activeBuffDiceFace})
                             </span>
                         )}
                      </div>
                  </div>
              </div>
-             <div>
-                {character.activeBuff.isRegenBuff && (
+             <div className="flex items-center gap-2">
+                {buff.isRegenBuff && !readOnly && (
                     <button 
                         onClick={() => {
+                             // Use a dummy form to carry the name for matching
+                             const dummyForm = { name: buff.activeBuffName, id: buff.activeBuffFormID } as any; 
                              setActiveRoll({
                                 label: `Regeneration`,
                                 modifier: 0,
                                 isHealing: true,
-                                diceCount: character.activeBuff?.activeBuffDiceCount || 1,
-                                diceFace: character.activeBuff?.activeBuffDiceFace || 6,
+                                diceCount: buff.activeBuffDiceCount || 1,
+                                diceFace: buff.activeBuffDiceFace || 6,
+                                pendingForm: dummyForm
                             });
                         }}
                         className="bg-white text-slayer-orange py-2 px-3 rounded-lg border border-orange-100 shadow-sm hover:bg-orange-50 active:scale-95 transition-all font-bold text-xs"
@@ -466,10 +496,22 @@ export function CombatTab({ character, onUpdate, readOnly, isDM }: Props) {
                         Roll Heal
                     </button>
                 )}
+                {!readOnly && (
+                    <button 
+                        onClick={() => {
+                            const newBuffs = character.activeBuffs?.filter((_, index) => index !== i);
+                            onUpdate({ activeBuffs: newBuffs });
+                        }}
+                        className="p-2 text-gray-400 hover:text-red-500 transition-colors"
+                    >
+                        <X size={18} />
+                    </button>
+                )}
              </div>
          </div>
-      )}
-
+      ))}
+      </div>
+      
       {/* Stamina / Breath Engine */}
       {!isDemon && (
       <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 relative overflow-hidden">

@@ -147,6 +147,9 @@ export function CharacterSheet() {
 
   const handleDisconnect = async () => {
       if (!id) return;
+      if (character?.activeSessionCode) {
+          await GameService.leaveGame(character.activeSessionCode, id);
+      }
       await CharacterService.update(id, { activeSessionCode: "" });
       setShowJoinModal(false);
       showToast("Disconnected", 'info');
@@ -186,12 +189,14 @@ export function CharacterSheet() {
                 </p>
             </div>
             
-            <button 
-                onClick={() => setShowJoinModal(true)}
-                className={`p-2 rounded-full ${character.activeSessionCode ? 'text-green-500 bg-green-50' : 'text-gray-400 hover:bg-gray-100'}`}
-            >
-                <Wifi size={20} />
-            </button>
+            {!isReadOnly && (
+                <button 
+                    onClick={() => setShowJoinModal(true)}
+                    className={`p-2 rounded-full ${character.activeSessionCode ? 'text-green-500 bg-green-50' : 'text-gray-400 hover:bg-gray-100'}`}
+                >
+                    <Wifi size={20} />
+                </button>
+            )}
         </header>
 
         {/* Content Area */}
@@ -249,12 +254,14 @@ export function CharacterSheet() {
                             >
                                 Close
                             </button>
-                            <button 
-                                onClick={handleDisconnect}
-                                className="flex-1 py-3 font-bold text-white bg-red-500 rounded-xl shadow-lg shadow-red-200"
-                            >
-                                Disconnect
-                            </button>
+                            {!isDM && (
+                                <button 
+                                    onClick={handleDisconnect}
+                                    className="flex-1 py-3 font-bold text-white bg-red-500 rounded-xl shadow-lg shadow-red-200"
+                                >
+                                    Disconnect
+                                </button>
+                            )}
                         </div>
                        </>
                   ) : (
@@ -277,15 +284,17 @@ export function CharacterSheet() {
                             >
                                 Cancel
                             </button>
-                            <button 
-                                onClick={() => {
-                                    const input = document.querySelector('input[placeholder*="Code"]') as HTMLInputElement;
-                                    if(input) handleJoinSession(input.value.toUpperCase());
-                                }}
-                                className="flex-1 py-3 font-bold text-white bg-slayer-orange rounded-xl shadow-lg shadow-orange-200"
-                            >
-                                Connect
-                            </button>
+                            {!isDM && (
+                                <button 
+                                    onClick={() => {
+                                        const input = document.querySelector('input[placeholder*="Code"]') as HTMLInputElement;
+                                        if(input) handleJoinSession(input.value.toUpperCase());
+                                    }}
+                                    className="flex-1 py-3 font-bold text-white bg-slayer-orange rounded-xl shadow-lg shadow-orange-200"
+                                >
+                                    Connect
+                                </button>
+                            )}
                         </div>
                       </>
                   )}
