@@ -7,7 +7,7 @@ import { GameService } from "../../services/gameService";
 import { CharacterService } from "../../services/characterService";
 import type { GameSession } from "../../services/gameService";
 import type { StatusEffect, InventoryItem } from "../../types";
-import { Copy, Users, Heart, Wind, Power, ArrowLeft, Sparkles, CheckSquare, Square, Backpack, FileText } from 'lucide-react';
+import { Copy, Users, Heart, Wind, Power, ArrowLeft, Sparkles, CheckSquare, Square, Backpack, FileText, Coins } from 'lucide-react';
 
 const COMMON_EFFECTS = [
     { name: "Advantage", type: "advantage" },
@@ -35,6 +35,7 @@ export function DMView() {
 
   // Item Adding State
   const [newItemParams, setNewItemParams] = useState({ name: "", quantity: 1, weight: 0 });
+  const [goldAmount, setGoldAmount] = useState(0);
   
   // Note Editing State
   const [dmNoteBuffer, setDmNoteBuffer] = useState("");
@@ -171,6 +172,36 @@ export function DMView() {
       }
   };
 
+  const handleGiveGold = async () => {
+    if (!goldAmount || targetIds.size === 0) return;
+
+    const isConfirmed = await confirm({
+        title: "Give Gold",
+        message: `Give ${goldAmount} Gold to ${targetIds.size} player(s)?`,
+        confirmText: "Give Gold",
+        variant: "info"
+    });
+    if (!isConfirmed) return;
+
+    try {
+        const promises = Array.from(targetIds).map(async (charId) => {
+            const char = await CharacterService.get(charId);
+            if (!char) return;
+
+            const currentGold = char.gold || 0;
+            // Allow negative values to take gold away
+            await CharacterService.update(charId, { gold: Math.max(0, currentGold + goldAmount) });
+        });
+
+        await Promise.all(promises);
+        showToast(`Transferred ${goldAmount} Gold to ${targetIds.size} players.`, 'success');
+        setGoldAmount(0);
+        setTargetIds(new Set());
+    } catch (error) {
+        showToast("Error transferring gold", 'error');
+    }
+  };
+
   const handleUpdateDMNotes = async () => {
       if (targetIds.size !== 1) return;
       const charId = Array.from(targetIds)[0];
@@ -292,13 +323,20 @@ export function DMView() {
                         placeholder="Item Name"
                         value={newItemParams.name}
                         onChange={e => setNewItemParams({...newItemParams, name: e.target.value})}
-                        className="flex-1 p-2 border border-gray-200 rounded-lg text-sm"
+                        className="flex-[2] p-2 border border-gray-200 rounded-lg text-sm"
                     />
                     <input 
                         type="number" 
                         placeholder="Qty"
                         value={newItemParams.quantity}
                         onChange={e => setNewItemParams({...newItemParams, quantity: Math.max(1, parseInt(e.target.value)||1)})}
+                        className="w-16 p-2 border border-gray-200 rounded-lg text-sm text-center"
+                    />
+                     <input 
+                        type="number" 
+                        placeholder="Wt."
+                        value={newItemParams.weight}
+                        onChange={e => setNewItemParams({...newItemParams, weight: parseFloat(e.target.value)||0})}
                         className="w-16 p-2 border border-gray-200 rounded-lg text-sm text-center"
                     />
                 </div>
@@ -313,7 +351,30 @@ export function DMView() {
            
            <div className="border-t border-gray-100"></div>
 
-           {/* Section 3: DM Notes */}
+           {/* Section 3: Give Gold */}
+           <div>
+                <h3 className="font-bold text-gray-800 mb-3 flex items-center gap-2"><Coins size={18} className="text-yellow-500"/> Give Gold</h3>
+                <div className="flex gap-2 mb-2">
+                    <input 
+                        type="number" 
+                        placeholder="Amount (Use negative to remove)"
+                        value={goldAmount === 0 ? '' : goldAmount}
+                        onChange={e => setGoldAmount(parseInt(e.target.value))}
+                        className="flex-1 p-2 border border-gray-200 rounded-lg text-sm"
+                    />
+                </div>
+                <button 
+                    onClick={handleGiveGold}
+                    disabled={targetIds.size === 0 || !goldAmount}
+                    className="w-full bg-yellow-500 text-white font-bold py-3 rounded-xl disabled:opacity-50 active:scale-95 transition-all shadow-lg shadow-yellow-100"
+                >
+                    Transfer Gold to {targetIds.size} Player(s)
+                </button>
+           </div>
+
+           <div className="border-t border-gray-100"></div>
+
+           {/* Section 4: DM Notes */}
            <div>
                <h3 className="font-bold text-gray-800 mb-3 flex items-center gap-2"><FileText size={18} className="text-purple-500"/> DM Notes</h3>
                <button 

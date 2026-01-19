@@ -48,6 +48,13 @@ export function CharacterSheet() {
               });
           }
 
+          // Check for Gold changes
+          if (character.gold !== prev.gold && prev.gold !== undefined) {
+               const diff = character.gold - prev.gold;
+               if (diff > 0) showToast(`Received ${diff} Gold`, 'success');
+               else if (diff < 0) showToast(`Lost ${Math.abs(diff)} Gold`, 'info');
+          }
+
           // Check for DM Note changes
           if (character.dmNotes !== prev.dmNotes && prev.dmNotes !== undefined) {
                showToast("DM updated your private notes", 'info');
