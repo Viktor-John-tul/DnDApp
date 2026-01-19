@@ -7,8 +7,9 @@ import { GameService } from "../../services/gameService";
 import { CharacterService } from "../../services/characterService";
 import type { GameSession } from "../../services/gameService";
 import type { StatusEffect, InventoryItem } from "../../types";
-import { Copy, Users, Power, ArrowLeft, Sparkles, Backpack, FileText, Coins, X, Heart, Wind, Square, CheckSquare, Swords, Lock } from 'lucide-react';
+import { Copy, Users, Power, ArrowLeft, Sparkles, Backpack, FileText, Coins, X, Heart, Wind, Square, CheckSquare, Swords, Lock, Crosshair } from 'lucide-react';
 import { motion, AnimatePresence } from "framer-motion";
+import { CombatManager } from "../../components/CombatManager";
 
 const COMMON_EFFECTS = [
     { name: "Advantage", type: "advantage" },
@@ -33,7 +34,7 @@ export function DMView() {
   const [selectedEffect, setSelectedEffect] = useState<string | null>(null);
   const [targetIds, setTargetIds] = useState<Set<string>>(new Set());
   const [applyingEffect, setApplyingEffect] = useState(false);
-  const [activeTool, setActiveTool] = useState<'effects' | 'items' | 'gold' | 'notes' | 'health' | 'actions' | 'forms'>('effects');
+  const [activeTool, setActiveTool] = useState<'effects' | 'items' | 'gold' | 'notes' | 'health' | 'actions' | 'forms' | 'combat'>('combat');
 
   // Action Adding State
   const [newActionParams, setNewActionParams] = useState({ name: "", description: "", type: "main" as 'main' | 'bonus' | 'reaction' | 'free' });
@@ -399,6 +400,13 @@ export function DMView() {
            {/* Tool Tabs */}
            <div className="flex border-b border-gray-100 overflow-x-auto">
                <ToolTab 
+                  active={activeTool === 'combat'} 
+                  onClick={() => setActiveTool('combat')} 
+                  icon={<Crosshair size={18}/>} 
+                  label="Combat"
+                  color="text-red-600" 
+                />
+               <ToolTab 
                   active={activeTool === 'effects'} 
                   onClick={() => setActiveTool('effects')} 
                   icon={<Sparkles size={18}/>} 
@@ -452,6 +460,15 @@ export function DMView() {
            {/* Tool Content */}
            <div className="p-6 bg-gray-50/50 min-h-[300px]">
                <AnimatePresence mode="wait">
+                   {activeTool === 'combat' && sessionCode && session && (
+                       <motion.div 
+                         key="combat"
+                         initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
+                       >
+                           <CombatManager session={session} sessionCode={sessionCode} />
+                       </motion.div>
+                   )}
+                   
                    {activeTool === 'effects' && (
                        <motion.div 
                          key="effects"
