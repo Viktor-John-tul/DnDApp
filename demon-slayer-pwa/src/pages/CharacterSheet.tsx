@@ -267,14 +267,12 @@ export function CharacterSheet() {
                             >
                                 Close
                             </button>
-                            {!isDM && (
-                                <button 
-                                    onClick={handleDisconnect}
-                                    className="flex-1 py-3 font-bold text-white bg-red-500 rounded-xl shadow-lg shadow-red-200"
-                                >
-                                    Disconnect
-                                </button>
-                            )}
+                            <button 
+                                onClick={handleDisconnect}
+                                className="flex-1 py-3 font-bold text-white bg-red-500 rounded-xl shadow-lg shadow-red-200"
+                            >
+                                Disconnect
+                            </button>
                         </div>
                        </>
                   ) : (
@@ -297,17 +295,15 @@ export function CharacterSheet() {
                             >
                                 Cancel
                             </button>
-                            {!isDM && (
-                                <button 
-                                    onClick={() => {
-                                        const input = document.querySelector('input[placeholder*="Code"]') as HTMLInputElement;
-                                        if(input) handleJoinSession(input.value.toUpperCase());
-                                    }}
-                                    className="flex-1 py-3 font-bold text-white bg-slayer-orange rounded-xl shadow-lg shadow-orange-200"
-                                >
-                                    Connect
-                                </button>
-                            )}
+                            <button 
+                                onClick={() => {
+                                    const input = document.querySelector('input[placeholder*="Code"]') as HTMLInputElement;
+                                    if(input) handleJoinSession(input.value.toUpperCase());
+                                }}
+                                className="flex-1 py-3 font-bold text-white bg-slayer-orange rounded-xl shadow-lg shadow-orange-200"
+                            >
+                                Connect
+                            </button>
                         </div>
                       </>
                   )}
