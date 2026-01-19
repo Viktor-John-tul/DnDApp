@@ -1,18 +1,21 @@
-import { useState } from 'react';
-import { Swords, Wind, Zap, AlertTriangle, Plus, Minus, ShieldAlert, X, Heart, Shield, ArrowUp, ArrowDown, Clock, Lock } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Swords, Wind, Zap, AlertTriangle, Plus, Minus, ShieldAlert, X, Heart, Shield, ArrowUp, ArrowDown, Clock, Lock, SkipForward } from 'lucide-react';
 import type { RPGCharacter, BreathingForm, CombatAction } from '../../types';
+import type { GameSession } from '../../services/gameService';
 import { Calculator } from '../../services/rules';
 import { DiceRollerOverlay } from '../../components/DiceRollerOverlay';
 import { BreathingFormEditorModal } from '../../components/BreathingFormEditorModal';
 import { CombatActionEditorModal } from '../../components/CombatActionEditorModal';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useToast } from '../../context/ToastContext';
+import { GameService } from '../../services/gameService';
 
 interface Props {
   character: RPGCharacter;
   onUpdate: (updates: Partial<RPGCharacter>) => void;
   readOnly?: boolean;
   isDM?: boolean;
+  session?: GameSession | null;
 }
 
 interface ActiveRollState {
@@ -31,12 +34,16 @@ interface ActiveRollState {
   pendingRefCost?: number;
 }
 
-export function CombatTab({ character, onUpdate, readOnly, isDM }: Props) {
+export function CombatTab({ character, onUpdate, readOnly, isDM, session }: Props) {
   const { showToast } = useToast();
   const [activeRoll, setActiveRoll] = useState<ActiveRollState | null>(null);
   const [showOverdraftWarning] = useState(false);
   const [editingForm, setEditingForm] = useState<BreathingForm | null>(null);
   const [editingAction, setEditingAction] = useState<{action?: any, initialType?: any} | null>(null);
+  
+  // Action Economy State
+  const [actionsUsed, setActionsUsed] = useState(0);
+  const [bonusUsed, setBonusUsed] = useState(false);
   
   const [pendingHitConfirmForm, setPendingHitConfirmForm] = useState<BreathingForm | null>(null);
   const [healingConfig, setHealingConfig] = useState<{
@@ -100,6 +107,12 @@ export function CombatTab({ character, onUpdate, readOnly, isDM }: Props) {
   };
 
   const handleTechniqueRoll = (form: BreathingForm, calculatedCost?: number) => {
+    // Check action economy in combat
+    if (combat?.isActive && !canUseAction('main')) {
+      showToast("No actions remaining!", "error");
+      return;
+    }
+
     const cost = calculatedCost !== undefined ? calculatedCost : (form.spCost || 0);
     const nextBreaths = character.currentBreaths - cost;
     
@@ -118,6 +131,11 @@ export function CombatTab({ character, onUpdate, readOnly, isDM }: Props) {
 
     // Normal Execution
     commitTechnique(form, cost);
+    
+    // Consume action in combat
+    if (combat?.isActive && isMyTurn) {
+      useAction('main');
+    }
   };
 
   const commitTechnique = (form: BreathingForm, cost: number) => {
@@ -440,8 +458,128 @@ export function CombatTab({ character, onUpdate, readOnly, isDM }: Props) {
 
   const overdraftDC = 10 + Math.abs(Math.min(0, character.currentBreaths));
 
+  // Combat & Action Economy Logic
+  const combat = session?.combat;
+  const isMyTurn = combat?.isActive && combat.participants[combat.currentTurnIndex]?.id === character.id;
+  const MAX_ACTIONS = 2;
+
+  // Reset action economy when turn changes
+  useEffect(() => {
+    if (isMyTurn) {
+      setActionsUsed(0);
+      setBonusUsed(false);
+    }
+  }, [isMyTurn]);
+
+  const handleEndTurn = async () => {
+    if (!session?.code || !combat) return;
+    try {
+      await GameService.nextTurn(session.code);
+      showToast("Turn ended", "info");
+    } catch (error) {
+      console.error("Failed to end turn", error);
+      showToast("Failed to end turn", "error");
+    }
+  };
+
+  const canUseAction = (type: 'main' | 'bonus') => {
+    if (!combat?.isActive) return true; // No combat, no restrictions
+    if (!isMyTurn) return false; // Not your turn
+    if (type === 'main') return actionsUsed < MAX_ACTIONS;
+    if (type === 'bonus') return !bonusUsed;
+    return true;
+  };
+
+  const useAction = (type: 'main' | 'bonus') => {
+    if (type === 'main') setActionsUsed(prev => prev + 1);
+    if (type === 'bonus') setBonusUsed(true);
+  };
+
   return (
     <div className="space-y-6 pb-24">
+      
+      {/* Combat Tracker */}
+      {combat && combat.isActive && (
+        <div className="bg-gradient-to-r from-red-600 to-orange-600 text-white rounded-xl p-4 shadow-lg">
+          <div className="flex justify-between items-center mb-3">
+            <div>
+              <div className="text-xs opacity-80 uppercase tracking-wide">Round {combat.round}</div>
+              <div className="text-lg font-bold">
+                {isMyTurn ? "YOUR TURN!" : `${combat.participants[combat.currentTurnIndex]?.name}'s Turn`}
+              </div>
+            </div>
+            {isMyTurn && (
+              <button
+                onClick={handleEndTurn}
+                disabled={readOnly}
+                className="bg-white text-red-600 px-4 py-2 rounded-lg font-bold hover:bg-gray-100 transition flex items-center gap-2 disabled:opacity-50"
+              >
+                <SkipForward size={16} /> End Turn
+              </button>
+            )}
+          </div>
+          
+          {/* Turn Order */}
+          <div className="flex gap-2 overflow-x-auto pb-2">
+            {combat.participants.filter(p => !p.isHidden || isDM).map((p, idx) => (
+              <div
+                key={p.id}
+                className={`flex-shrink-0 flex flex-col items-center gap-1 ${
+                  idx === combat.currentTurnIndex ? 'opacity-100' : 'opacity-50'
+                }`}
+              >
+                {p.photoUrl ? (
+                  <img
+                    src={p.photoUrl}
+                    alt={p.name}
+                    className={`w-10 h-10 rounded-full object-cover border-2 ${
+                      idx === combat.currentTurnIndex ? 'border-yellow-300' : 'border-white/30'
+                    }`}
+                  />
+                ) : (
+                  <div
+                    className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs border-2 ${
+                      idx === combat.currentTurnIndex 
+                        ? 'bg-yellow-300 text-gray-900 border-yellow-300' 
+                        : 'bg-white/20 border-white/30'
+                    }`}
+                  >
+                    {p.name.charAt(0)}
+                  </div>
+                )}
+                <span className="text-[10px] font-bold">{p.name.split(' ')[0]}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Action Economy */}
+          {isMyTurn && (
+            <div className="mt-3 pt-3 border-t border-white/20 flex gap-4">
+              <div className="flex items-center gap-2">
+                <span className="text-xs opacity-80">Actions:</span>
+                <div className="flex gap-1">
+                  {[...Array(MAX_ACTIONS)].map((_, i) => (
+                    <div
+                      key={i}
+                      className={`w-6 h-6 rounded border-2 ${
+                        i < actionsUsed ? 'bg-white/30 border-white/50' : 'bg-white border-white'
+                      }`}
+                    />
+                  ))}
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs opacity-80">Bonus:</span>
+                <div
+                  className={`w-6 h-6 rounded border-2 ${
+                    bonusUsed ? 'bg-white/30 border-white/50' : 'bg-white border-white'
+                  }`}
+                />
+              </div>
+            </div>
+          )}
+        </div>
+      )}
       
       {/* Active Status Effects (DM Tools) */}
       <div className="flex flex-wrap gap-2 mb-2">

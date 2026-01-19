@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { CharacterService } from "../services/characterService";
 import type { RPGCharacter } from "../types";
+import type { GameSession } from "../services/gameService";
 import { MainStatsTab } from "./tabs/MainStatsTab";
 import { CombatTab } from "./tabs/CombatTab";
 import { InventoryTab } from "./tabs/InventoryTab";
@@ -25,6 +26,7 @@ export function CharacterSheet() {
   const [activeTab, setActiveTab] = useState<TabId>('stats');
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [isDM, setIsDM] = useState(false);
+  const [activeSession, setActiveSession] = useState<GameSession | null>(null);
   
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prevCharacterRef = useRef<RPGCharacter | null>(null);
@@ -111,6 +113,9 @@ export function CharacterSheet() {
         if (!session) {
             showToast("Session ended by DM", "info");
             await CharacterService.update(id, { activeSessionCode: "" });
+            setActiveSession(null);
+        } else {
+            setActiveSession(session);
         }
     });
 
@@ -215,7 +220,7 @@ export function CharacterSheet() {
         {/* Content Area */}
         <main className="flex-1 overflow-y-auto p-4 custom-scrollbar">
             {activeTab === 'stats' && <MainStatsTab character={character} onUpdate={handleUpdate} readOnly={isReadOnly} />}
-            {activeTab === 'combat' && <CombatTab character={character} onUpdate={handleUpdate} readOnly={isReadOnly} isDM={isDM} />}
+            {activeTab === 'combat' && <CombatTab character={character} onUpdate={handleUpdate} readOnly={isReadOnly} isDM={isDM} session={activeSession} />}
             {activeTab === 'inventory' && <InventoryTab character={character} onUpdate={handleUpdate} readOnly={isReadOnly} />}
             {activeTab === 'bio' && <BioTab character={character} onUpdate={handleUpdate} readOnly={isReadOnly} />}
         </main>
