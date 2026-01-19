@@ -12,6 +12,7 @@ interface Props {
   character: RPGCharacter;
   onUpdate: (updates: Partial<RPGCharacter>) => void;
   readOnly?: boolean;
+  isDM?: boolean;
 }
 
 interface ActiveRollState {
@@ -30,7 +31,7 @@ interface ActiveRollState {
   pendingRefCost?: number;
 }
 
-export function CombatTab({ character, onUpdate, readOnly }: Props) {
+export function CombatTab({ character, onUpdate, readOnly, isDM }: Props) {
   const { showToast } = useToast();
   const [activeRoll, setActiveRoll] = useState<ActiveRollState | null>(null);
   const [showOverdraftWarning] = useState(false);
@@ -567,16 +568,33 @@ export function CombatTab({ character, onUpdate, readOnly }: Props) {
                     : form.name;
 
                 return (
-                <div key={form.id} className={`bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex justify-between items-center group relative ${form.isLocked ? 'grayscale opacity-75' : ''}`}>
+                <div key={form.id} className={`bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex justify-between items-center group relative ${form.isLocked && !isDM ? 'grayscale opacity-75' : ''}`}>
                     {/* Locked Indicator */}
-                    {form.isLocked && (
+                    {form.isLocked && !isDM && (
                          <div className="absolute inset-0 z-10 bg-white/50 flex items-center justify-center rounded-xl pointer-events-none data-[admin-override=true]:pointer-events-auto">
                               <Lock size={24} className="text-gray-400 opacity-50" />
                          </div>
                     )}
 
+                    {/* DM Lock Toggle */}
+                    {isDM && (
+                        <button 
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                const newForms = character.breathingForms.map(f => 
+                                    f.id === form.id ? { ...f, isLocked: !f.isLocked } : f
+                                );
+                                onUpdate({ breathingForms: newForms });
+                            }}
+                            className={`mr-3 p-2 rounded-lg transition-colors z-20 ${form.isLocked ? 'bg-red-500 text-white shadow-red-200 shadow-lg' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}
+                            title={form.isLocked ? "Unlock Form" : "Lock Form"}
+                        >
+                            <Lock size={16} />
+                        </button>
+                    )}
+
                     {/* Reordering Controls (Only visible when not ReadOnly) */}
-                    {!readOnly && !form.isLocked && (
+                    {!readOnly && (!form.isLocked || isDM) && (
                         <div className="flex flex-col gap-1 mr-3 opacity-0 group-hover:opacity-100 transition-opacity">
                             <button 
                                 onClick={(e) => { e.stopPropagation(); moveForm(index, 'up'); }}
@@ -595,7 +613,7 @@ export function CombatTab({ character, onUpdate, readOnly }: Props) {
                         </div>
                     )}
 
-                    <div className={`flex-1 ${!readOnly && !form.isLocked ? 'cursor-pointer' : ''}`} onClick={() => !readOnly && !form.isLocked && setEditingForm(form)}>
+                    <div className={`flex-1 ${!readOnly && (!form.isLocked || isDM) ? 'cursor-pointer' : ''}`} onClick={() => !readOnly && (!form.isLocked || isDM) && setEditingForm(form)}>
                         <div className="flex items-center gap-2 mb-1">
                             <h4 className="font-bold text-gray-800 flex items-center gap-2">
                                 {displayName}
@@ -614,9 +632,9 @@ export function CombatTab({ character, onUpdate, readOnly }: Props) {
                             <span className="block font-bold text-cyan-600">{cost}</span>
                         </div>
                         <button 
-                            onClick={() => !readOnly && !form.isLocked && handleTechniqueRoll(form, cost)}
-                            disabled={readOnly || form.isLocked}
-                            className={`p-2.5 rounded-xl shadow-lg transition-all ${readOnly || form.isLocked ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-gray-900 text-white shadow-gray-200 active:scale-95'}`}
+                            onClick={() => !readOnly && (!form.isLocked || isDM) && handleTechniqueRoll(form, cost)}
+                            disabled={readOnly || (form.isLocked && !isDM)}
+                            className={`p-2.5 rounded-xl shadow-lg transition-all ${readOnly || (form.isLocked && !isDM) ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-gray-900 text-white shadow-gray-200 active:scale-95'}`}
                         >
                             <Swords size={18} />
                         </button>

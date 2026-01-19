@@ -82,6 +82,16 @@ export const GameService = {
     await deleteDoc(doc(db, "sessions", code));
   },
 
+  checkIsDM: async (code: string, userId: string): Promise<boolean> => {
+      try {
+          const snap = await getDoc(doc(db, "sessions", code));
+          if (!snap.exists()) return false;
+          return snap.data().dmId === userId;
+      } catch {
+          return false;
+      }
+  },
+
   // Host a new game
   createGame: async (dmId: string): Promise<string> => {
     const code = GameService.generateCode();

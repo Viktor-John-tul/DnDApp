@@ -24,9 +24,23 @@ export function CharacterSheet() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<TabId>('stats');
   const [showJoinModal, setShowJoinModal] = useState(false);
+  const [isDM, setIsDM] = useState(false);
   
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prevCharacterRef = useRef<RPGCharacter | null>(null);
+
+  // Check DM Status
+  useEffect(() => {
+     const checkDM = async () => {
+         if (character?.activeSessionCode && user) {
+             const isDm = await GameService.checkIsDM(character.activeSessionCode, user.uid);
+             setIsDM(isDm);
+         } else {
+             setIsDM(false);
+         }
+     };
+     checkDM();
+  }, [character?.activeSessionCode, user]);
 
   // Notification Listener
   useEffect(() => {
@@ -96,7 +110,7 @@ export function CharacterSheet() {
 
   const handleUpdate = (updates: Partial<RPGCharacter>) => {
     if (!character || !id) return;
-    if (isReadOnly) return;
+    if (isReadOnly && !isDM) return;
     
     // 1. Optimistic Update
     const updatedChar = { ...character, ...updates };
@@ -182,10 +196,10 @@ export function CharacterSheet() {
 
         {/* Content Area */}
         <main className="flex-1 overflow-y-auto p-4 custom-scrollbar">
-            {activeTab === 'stats' && <MainStatsTab character={character} onUpdate={handleUpdate} readOnly={isReadOnly} />}
-            {activeTab === 'combat' && <CombatTab character={character} onUpdate={handleUpdate} readOnly={isReadOnly} />}
-            {activeTab === 'inventory' && <InventoryTab character={character} onUpdate={handleUpdate} readOnly={isReadOnly} />}
-            {activeTab === 'bio' && <BioTab character={character} onUpdate={handleUpdate} readOnly={isReadOnly} />}
+            {activeTab === 'stats' && <MainStatsTab character={character} onUpdate={handleUpdate} readOnly={isReadOnly && !isDM} />}
+            {activeTab === 'combat' && <CombatTab character={character} onUpdate={handleUpdate} readOnly={isReadOnly && !isDM} isDM={isDM} />}
+            {activeTab === 'inventory' && <InventoryTab character={character} onUpdate={handleUpdate} readOnly={isReadOnly && !isDM} />}
+            {activeTab === 'bio' && <BioTab character={character} onUpdate={handleUpdate} readOnly={isReadOnly && !isDM} />}
         </main>
 
         {/* Bottom Navigation */}
