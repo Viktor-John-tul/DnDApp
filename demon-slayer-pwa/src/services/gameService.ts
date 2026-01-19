@@ -197,26 +197,43 @@ export const GameService = {
   },
 
   addToCombat: async (code: string, participant: { id: string, name: string, type: 'player' | 'npc', photoUrl?: string | null, maxHP?: number, currentHP?: number }) => {
-    const sessionRef = doc(db, "sessions", code);
-    const sessionSnap = await getDoc(sessionRef);
-    
-    if (!sessionSnap.exists()) return;
-    
-    const session = sessionSnap.data() as GameSession;
-    if (!session.combat) return;
-    
-    // Check if already in combat
-    if (session.combat.participants.some(p => p.id === participant.id)) return;
-    
-    const newParticipant = {
-      ...participant,
-      initiative: 0,
-      isHidden: participant.type === 'npc' ? false : undefined
-    };
-    
-    await updateDoc(sessionRef, {
-      'combat.participants': [...session.combat.participants, newParticipant]
-    });
+    try {
+      const sessionRef = doc(db, "sessions", code);
+      const sessionSnap = await getDoc(sessionRef);
+      
+      if (!sessionSnap.exists()) {
+        throw new Error("Session not found");
+      }
+      
+      const session = sessionSnap.data() as GameSession;
+      if (!session.combat) {
+        throw new Error("Combat not started");
+      }
+      
+      // Check if already in combat
+      if (session.combat.participants.some(p => p.id === participant.id)) {
+        console.log("Participant already in combat");
+        return;
+      }
+      
+      const newParticipant = {
+        id: participant.id,
+        name: participant.name,
+        type: participant.type,
+        photoUrl: participant.photoUrl || null,
+        maxHP: participant.maxHP,
+        currentHP: participant.currentHP,
+        initiative: 0,
+        isHidden: participant.type === 'npc' ? false : undefined
+      };
+      
+      await updateDoc(sessionRef, {
+        'combat.participants': [...session.combat.participants, newParticipant]
+      });
+    } catch (error) {
+      console.error("Error in addToCombat:", error);
+      throw error;
+    }
   },
 
   updateInitiative: async (code: string, participantId: string, initiative: number) => {
