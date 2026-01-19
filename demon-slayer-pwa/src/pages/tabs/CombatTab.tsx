@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { Swords, Wind, Zap, AlertTriangle, Plus, Minus, ShieldAlert, X, Heart, Shield, ArrowUp, ArrowDown } from 'lucide-react';
-import type { RPGCharacter, BreathingForm } from '../../types';
+import { Swords, Wind, Zap, AlertTriangle, Plus, Minus, ShieldAlert, X, Heart, Shield, ArrowUp, ArrowDown, Clock, Move } from 'lucide-react';
+import type { RPGCharacter, BreathingForm, ActionType, CombatAction } from '../../types';
 import { Calculator } from '../../services/rules';
 import { DiceRollerOverlay } from '../../components/DiceRollerOverlay';
 import { BreathingFormEditorModal } from '../../components/BreathingFormEditorModal';
+import { CombatActionEditorModal } from '../../components/CombatActionEditorModal';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useToast } from '../../context/ToastContext';
 
@@ -34,6 +35,8 @@ export function CombatTab({ character, onUpdate, readOnly }: Props) {
   const [activeRoll, setActiveRoll] = useState<ActiveRollState | null>(null);
   const [showOverdraftWarning] = useState(false);
   const [editingForm, setEditingForm] = useState<BreathingForm | null>(null);
+  const [editingAction, setEditingAction] = useState<{action?: any, initialType?: any} | null>(null);
+  
   const [pendingHitConfirmForm, setPendingHitConfirmForm] = useState<BreathingForm | null>(null);
   const [healingConfig, setHealingConfig] = useState<{
       show: boolean;
@@ -636,11 +639,28 @@ export function CombatTab({ character, onUpdate, readOnly }: Props) {
       {/* Basic Attacks Placeholder */}
       <div className="space-y-3">
          <div className="flex justify-between items-center px-1">
-            <h3 className="font-bold text-gray-800">Basic Actions</h3>
+            <h3 className="font-bold text-gray-800">Combat Actions</h3>
          </div>
-         <button 
-            onClick={() => {
-                if (readOnly) return;
+         
+         {/* Action Categories */}
+         {/* Main Actions */}
+         <div className="space-y-2 mb-4">
+             <div className="flex justify-between items-center px-1">
+                 <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Main Actions</h4>
+                 {!readOnly && (
+                     <button 
+                         onClick={() => setEditingAction({ initialType: 'main' })} 
+                         className="text-gray-400 hover:text-slayer-orange"
+                     >
+                         <Plus size={16} />
+                     </button>
+                 )}
+             </div>
+
+             {/* Standard Actions moved here */}
+             <button 
+                onClick={() => {
+                    if (readOnly) return;
                 
                 // Determine roll mode
                 const hasEffectAdvantage = character.statusEffects?.some(e => e.type === 'advantage');
@@ -671,13 +691,30 @@ export function CombatTab({ character, onUpdate, readOnly }: Props) {
             </div>
             <span className="text-xs font-bold text-gray-400">1d4 + {strMod}</span>
          </button>
-      </div>
 
-      {/* Bonus Actions */}
-      <div className="space-y-3">
-         <div className="flex justify-between items-center px-1">
-            <h3 className="font-bold text-gray-800">Bonus Actions</h3>
+             {character.customActions?.filter(a => a.type === 'main').map(action => (
+                 <CustomActionRow 
+                    key={action.id} 
+                    action={action} 
+                    readOnly={readOnly}
+                    onEdit={(a) => !readOnly && setEditingAction({ action: a })}
+                 />
+             ))}
          </div>
+
+         {/* Bonus Actions */}
+         <div className="space-y-2 mb-4">
+             <div className="flex justify-between items-center px-1">
+                 <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Bonus Actions</h4>
+                 {!readOnly && (
+                     <button 
+                         onClick={() => setEditingAction({ initialType: 'bonus' })} 
+                         className="text-gray-400 hover:text-slayer-orange"
+                     >
+                         <Plus size={16} />
+                     </button>
+                 )}
+             </div>
          
          {!isDemon && (
              <button 
@@ -696,7 +733,92 @@ export function CombatTab({ character, onUpdate, readOnly }: Props) {
                 </div>
              </button>
          )}
+
+         {character.customActions?.filter(a => a.type === 'bonus').map(action => (
+                <CustomActionRow 
+                key={action.id} 
+                action={action} 
+                readOnly={readOnly}
+                onEdit={(a) => !readOnly && setEditingAction({ action: a })}
+                />
+            ))}
       </div>
+
+       {/* Reactions */}
+       <div className="space-y-2 mb-4">
+             <div className="flex justify-between items-center px-1">
+                 <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Reactions</h4>
+                 {!readOnly && (
+                     <button 
+                         onClick={() => setEditingAction({ initialType: 'reaction' })} 
+                         className="text-gray-400 hover:text-slayer-orange"
+                     >
+                         <Plus size={16} />
+                     </button>
+                 )}
+             </div>
+             {character.customActions?.filter(a => a.type === 'reaction').length === 0 && (
+                 <div className="text-center p-3 text-xs text-gray-300 italic">No reactions</div>
+             )}
+             {character.customActions?.filter(a => a.type === 'reaction').map(action => (
+                 <CustomActionRow 
+                    key={action.id} 
+                    action={action} 
+                    readOnly={readOnly}
+                    onEdit={(a) => !readOnly && setEditingAction({ action: a })}
+                 />
+             ))}
+         </div>
+
+         {/* Free Actions */}
+         <div className="space-y-2 mb-4">
+             <div className="flex justify-between items-center px-1">
+                 <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Free Actions</h4>
+                 {!readOnly && (
+                     <button 
+                         onClick={() => setEditingAction({ initialType: 'free' })} 
+                         className="text-gray-400 hover:text-slayer-orange"
+                     >
+                         <Plus size={16} />
+                     </button>
+                 )}
+             </div>
+             {character.customActions?.filter(a => a.type === 'free').length === 0 && (
+                 <div className="text-center p-3 text-xs text-gray-300 italic">No free actions</div>
+             )}
+             {character.customActions?.filter(a => a.type === 'free').map(action => (
+                 <CustomActionRow 
+                    key={action.id} 
+                    action={action} 
+                    readOnly={readOnly}
+                    onEdit={(a) => !readOnly && setEditingAction({ action: a })}
+                 />
+             ))}
+         </div>
+
+      {editingAction && (
+          <CombatActionEditorModal
+             action={editingAction.action}
+             initialType={editingAction.initialType}
+             onSave={(updatedAction) => {
+                 const current = character.customActions || [];
+                 const exists = current.find(a => a.id === updatedAction.id);
+                 let newActions;
+                 if (exists) {
+                     newActions = current.map(a => a.id === updatedAction.id ? updatedAction : a);
+                 } else {
+                     newActions = [...current, updatedAction];
+                 }
+                 onUpdate({ customActions: newActions });
+                 setEditingAction(null);
+             }}
+             onDelete={(id) => {
+                 const current = character.customActions || [];
+                 onUpdate({ customActions: current.filter(a => a.id !== id) });
+             }}
+             onClose={() => setEditingAction(null)}
+          />
+      )}
 
       {pendingHitConfirmForm && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
@@ -827,6 +949,7 @@ export function CombatTab({ character, onUpdate, readOnly }: Props) {
         />
       )}
 
+      {/* Helper CustomActionRow was here */}
       <AnimatePresence>
         {showOverdraftWarning && (
             <motion.div 
@@ -842,4 +965,34 @@ export function CombatTab({ character, onUpdate, readOnly }: Props) {
       </AnimatePresence>
     </div>
   );
+}
+
+import { ZapOff } from 'lucide-react';
+function CustomActionRow({ action, readOnly, onEdit }: { action: CombatAction, readOnly?: boolean, onEdit: (a: CombatAction) => void }) {
+    const icon = {
+        main: Swords,
+        bonus: Zap,
+        reaction: Clock,
+        free: ZapOff
+    }[action.type] || Swords;
+
+    const IconComp = icon;
+
+    return (
+        <button 
+            onClick={() => onEdit(action)}
+            disabled={readOnly}
+            className={`w-full p-4 rounded-xl shadow-sm border border-gray-100 flex justify-between items-center group transition-colors text-left ${readOnly ? 'bg-gray-50 opacity-50 cursor-not-allowed' : 'bg-white hover:border-gray-200'}`}
+        >
+            <div className="flex items-center gap-3">
+                <div className="bg-gray-50 p-2 rounded-lg text-gray-400 group-hover:text-slayer-orange transition-colors">
+                    <IconComp size={18} />
+                </div>
+                <div>
+                    <span className="font-bold text-sm text-gray-700 block">{action.name}</span>
+                    <span className="text-xs text-gray-400 block line-clamp-1">{action.description}</span>
+                </div>
+            </div>
+        </button>
+    );
 }

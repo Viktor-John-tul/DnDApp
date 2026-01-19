@@ -19,6 +19,16 @@ const EFFECT_TYPES: { value: FormEffectType; label: string; icon: any }[] = [
 export function BreathingFormEditorModal({ form: initialForm, onSave, onClose, isDemon = false }: Props) {
   const [form, setForm] = React.useState<BreathingForm>(initialForm);
 
+  // Filter effect types based on Demon status
+  const visibleEffectTypes = isDemon 
+      ? EFFECT_TYPES 
+      : EFFECT_TYPES.filter(t => t.value !== 'heal');
+
+  // Filter effect types based on Demon status
+  const visibleEffectTypes = isDemon 
+      ? EFFECT_TYPES 
+      : EFFECT_TYPES.filter(t => t.value !== 'heal');
+
   const handleDone = () => {
     onSave(form);
     onClose();
@@ -97,8 +107,8 @@ export function BreathingFormEditorModal({ form: initialForm, onSave, onClose, i
           <div className="space-y-4">
             <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider">Effect Mechanics</h3>
             
-            <div className="grid grid-cols-3 gap-2">
-              {EFFECT_TYPES.map(type => (
+            <div className={`grid ${visibleEffectTypes.length > 3 ? 'grid-cols-2' : 'grid-cols-3'} gap-2`}>
+              {visibleEffectTypes.map(type => (
                 <button
                   key={type.value}
                   onClick={() => setForm({...form, effectType: type.value})}
