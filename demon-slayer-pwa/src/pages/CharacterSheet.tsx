@@ -104,7 +104,7 @@ export function CharacterSheet() {
   if (!character) return null;
 
   return (
-    <div className="bg-gray-50 min-h-screen flex flex-col max-w-md mx-auto shadow-2xl overflow-hidden relative">
+    <div className="bg-gray-50 h-[100dvh] flex flex-col max-w-md mx-auto shadow-2xl overflow-hidden relative">
         
         {character.currentHP <= 0 && (
             <DeathScreen character={character} onUpdate={handleUpdate} />
