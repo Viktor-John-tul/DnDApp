@@ -32,11 +32,30 @@ export interface BreathingForm {
   isLocked?: boolean;
 }
 
-export type CharacterType = 'slayer' | 'demon';
+export type CharacterType = 'slayer' | 'demon' | 'human';
 
 export interface BloodDemonArt extends BreathingForm {
     // Extends BreathingForm structure for compatibility
     // Uses 'heal' effect type for healing arts
+}
+
+export interface Combatant {
+  id: string;
+  name: string;
+  initiative: number;
+  type: 'player' | 'npc';
+  isHidden?: boolean;
+  maxHP?: number;
+  currentHP?: number;
+  photoUrl?: string | null;
+}
+
+export interface CombatState {
+  isActive: boolean;
+  phase: 'setup' | 'active';
+  round: number;
+  currentTurnIndex: number;
+  participants: Combatant[];
 }
 
 export interface CombatAction {

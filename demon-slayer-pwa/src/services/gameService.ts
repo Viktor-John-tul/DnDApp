@@ -12,24 +12,27 @@ import {
   getDocs,
   deleteDoc
 } from "firebase/firestore";
-import type { RPGCharacter } from "../types";
+import type { RPGCharacter, CombatState } from "../types";
 
 export interface GameSession {
   code: string;
   dmId: string;
   createdAt: number;
   players: Record<string, PlayerSyncData>;
+  combat?: CombatState;
 }
 
 export interface PlayerSyncData {
   id: string;
   name: string;
-  type?: 'slayer' | 'demon';
+  type?: 'slayer' | 'demon' | 'human';
   currentHP: number;
   maxHP: number;
   currentBreaths: number;
   maxBreaths: number;
   level: number;
+  photoUrl?: string | null;
+  initiative?: number;
 }
 
 export const GameService = {
@@ -172,6 +175,91 @@ export const GameService = {
       } else {
         callback(null);
       }
+    });
+  },
+
+  // Combat Methods
+  startCombat: async (code: string) => {
+    const sessionRef = doc(db, "sessions", code);
+    await updateDoc(sessionRef, {
+      combat: {
+        isActive: false,
+        phase: 'setup',
+        round: 0,
+        currentTurnIndex: 0,
+        participants: []
+      }
+    });
+  },
+
+  updateInitiative: async (code: string, participantId: string, initiative: number) => {
+    const sessionRef = doc(db, "sessions", code);
+    const sessionSnap = await getDoc(sessionRef);
+    
+    if (!sessionSnap.exists()) return;
+    
+    const session = sessionSnap.data() as GameSession;
+    if (!session.combat) return;
+    
+    const participants = session.combat.participants.map(p => 
+      p.id === participantId ? { ...p, initiative } : p
+    );
+    
+    await updateDoc(sessionRef, {
+      'combat.participants': participants
+    });
+  },
+
+  startTurnBased: async (code: string) => {
+    const sessionRef = doc(db, "sessions", code);
+    const sessionSnap = await getDoc(sessionRef);
+    
+    if (!sessionSnap.exists()) return;
+    
+    const session = sessionSnap.data() as GameSession;
+    if (!session.combat) return;
+    
+    // Sort participants by initiative (highest first)
+    const sortedParticipants = [...session.combat.participants].sort((a, b) => b.initiative - a.initiative);
+    
+    await updateDoc(sessionRef, {
+      'combat.isActive': true,
+      'combat.phase': 'active',
+      'combat.round': 1,
+      'combat.currentTurnIndex': 0,
+      'combat.participants': sortedParticipants
+    });
+  },
+
+  nextTurn: async (code: string) => {
+    const sessionRef = doc(db, "sessions", code);
+    const sessionSnap = await getDoc(sessionRef);
+    
+    if (!sessionSnap.exists()) return;
+    
+    const session = sessionSnap.data() as GameSession;
+    if (!session.combat || !session.combat.isActive) return;
+    
+    const nextIndex = session.combat.currentTurnIndex + 1;
+    const participantCount = session.combat.participants.length;
+    
+    if (nextIndex >= participantCount) {
+      // New round
+      await updateDoc(sessionRef, {
+        'combat.currentTurnIndex': 0,
+        'combat.round': session.combat.round + 1
+      });
+    } else {
+      await updateDoc(sessionRef, {
+        'combat.currentTurnIndex': nextIndex
+      });
+    }
+  },
+
+  endCombat: async (code: string) => {
+    const sessionRef = doc(db, "sessions", code);
+    await updateDoc(sessionRef, {
+      combat: deleteField()
     });
   }
 };

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { Plus, LogOut, Users, PlayCircle, Eye, Skull, Sword } from "lucide-react";
+import { Plus, LogOut, Users, PlayCircle, Eye, Sword } from "lucide-react";
 import { CharacterService } from "../services/characterService";
 import { GameService } from "../services/gameService";
 import type { RPGCharacter } from "../types";
@@ -12,7 +12,7 @@ export function Dashboard() {
   const [characters, setCharacters] = useState<RPGCharacter[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeSession, setActiveSession] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<'slayer' | 'demon'>('slayer');
+  const [viewMode, setViewMode] = useState<'slayer' | 'npc'>('slayer');
 
   useEffect(() => {
     if (user) {
@@ -48,13 +48,17 @@ export function Dashboard() {
     }
   }
 
-  const filteredCharacters = characters.filter(c => (c.type || 'slayer') === viewMode);
+  const filteredCharacters = characters.filter(c => {
+    const charType = c.type || 'slayer';
+    if (viewMode === 'npc') return charType === 'demon' || charType === 'human';
+    return charType === viewMode;
+  });
 
   return (
-    <div className={`min-h-screen p-4 pb-20 ${viewMode === 'demon' ? 'bg-gray-950' : 'bg-gray-100'}`}>
+    <div className={`min-h-screen p-4 pb-20 ${viewMode === 'npc' ? 'bg-gray-950' : 'bg-gray-100'}`}>
       <header className="flex justify-between items-center mb-6">
-        <h1 className={`text-2xl font-bold ${viewMode === 'demon' ? 'text-red-600' : 'text-gray-900'}`}>
-            {viewMode === 'demon' ? '12 Kizuki' : 'Slayer Corps'}
+        <h1 className={`text-2xl font-bold ${viewMode === 'npc' ? 'text-purple-600' : 'text-gray-900'}`}>
+            {viewMode === 'npc' ? 'NPCs' : 'Slayer Corps'}
         </h1>
         <div className="flex gap-2">
            <Link to="/dm" className={`p-2 rounded-full shadow-sm font-bold text-xs flex items-center gap-1 transition-colors ${activeSession ? 'bg-gray-800 text-white hover:bg-gray-700 border border-gray-700' : 'text-slayer-orange bg-white hover:bg-orange-50'}`}>
@@ -81,12 +85,12 @@ export function Dashboard() {
               <Sword size={16} /> Slayers
           </button>
           <button 
-             onClick={() => setViewMode('demon')}
+             onClick={() => setViewMode('npc')}
              className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-bold transition-all ${
-                 viewMode === 'demon' ? 'bg-red-900 text-white shadow-sm' : 'text-gray-400 hover:text-gray-200'
+                 viewMode === 'npc' ? 'bg-purple-900 text-white shadow-sm' : 'text-gray-400 hover:text-gray-200'
              }`}
           >
-              <Skull size={16} /> Demons
+              <Users size={16} /> NPCs
           </button>
       </div>
 
@@ -119,7 +123,7 @@ export function Dashboard() {
         <div className="space-y-4">
             {filteredCharacters.length === 0 && (
                 <div className="text-center py-10 text-gray-400">
-                    {viewMode === 'slayer' ? 'No slayers recruited.' : 'No demons summoned.'}
+                    {viewMode === 'slayer' ? 'No slayers recruited.' : 'No NPCs created.'}
                 </div>
             )}
             {filteredCharacters.map(char => (
@@ -129,13 +133,13 @@ export function Dashboard() {
             <Link 
             to={viewMode === 'slayer' ? "/create" : "/create-demon"}
             className={`p-4 rounded-2xl shadow-sm border flex items-center justify-center gap-2 font-bold transition ${
-                viewMode === 'demon' 
-                ? 'bg-red-900 border-red-800 text-white hover:bg-red-800' 
+                viewMode === 'npc' 
+                ? 'bg-purple-900 border-purple-800 text-white hover:bg-purple-800' 
                 : 'bg-white border-gray-200 text-slayer-orange hover:bg-orange-50'
             }`}
             >
             <Plus size={24} />
-            {viewMode === 'slayer' ? 'Create Demon Slayer' : 'Summon Demon'}
+            {viewMode === 'slayer' ? 'Create Demon Slayer' : 'Create NPC'}
             </Link>
         </div>
       )}

@@ -6,7 +6,7 @@ import { CharacterService } from "../services/characterService";
 import { StorageService } from "../services/storageService";
 import { StatStepper } from "../components/StatStepper";
 
-import type { RPGCharacter } from "../types";
+import type { RPGCharacter, CharacterType } from "../types";
 
 const ALL_SKILLS = [
   "Acrobatics (Dex)", "Animal Handling (Wis)", "Arcana (Int)", "Athletics (Str)",
@@ -22,6 +22,7 @@ export function DemonCreation() {
   
   // Identity
   const [name, setName] = useState("");
+  const [characterType, setCharacterType] = useState<CharacterType>('demon');
   const [rank, setRank] = useState("Demon");
   const [level, setLevel] = useState(1);
   const [photo, setPhoto] = useState<File | null>(null);
@@ -92,7 +93,7 @@ export function DemonCreation() {
       const newCharacter: Omit<RPGCharacter, 'id' | 'createdAt' | 'updatedAt'> = {
         userId: user.uid,
         name,
-        type: 'demon',
+        type: characterType,
         characterClass: rank,
         level,
         
@@ -163,19 +164,19 @@ export function DemonCreation() {
   return (
     <div className="min-h-screen bg-gray-950 p-4 pb-20">
       <header className="flex items-center gap-2 mb-6">
-        <Link to="/" className="p-2 text-red-500 bg-gray-900 rounded-full">
+        <Link to="/" className="p-2 text-purple-500 bg-gray-900 rounded-full">
           <ChevronLeft size={24} />
         </Link>
-        <h1 className="text-2xl font-bold text-red-500">New Demon</h1>
+        <h1 className="text-2xl font-bold text-purple-500">New NPC</h1>
       </header>
       
       <div className="space-y-6 max-w-lg mx-auto">
         
         {/* Identity Section */}
-        <section className="bg-gray-900 p-4 rounded-xl shadow-lg border border-red-900/30">
+        <section className="bg-gray-900 p-4 rounded-xl shadow-lg border border-purple-900/30">
           <div className="flex justify-center mb-6">
             <label className="relative block cursor-pointer group">
-              <div className={`w-24 h-24 rounded-full border-4 border-red-900 overflow-hidden flex items-center justify-center bg-gray-950 ${!photoPreview && 'text-red-900'}`}>
+              <div className={`w-24 h-24 rounded-full border-4 border-purple-900 overflow-hidden flex items-center justify-center bg-gray-950 ${!photoPreview && 'text-purple-900'}`}>
                 {photoPreview ? (
                   <img src={photoPreview} alt="Preview" className="w-full h-full object-cover" />
                 ) : (
@@ -187,51 +188,96 @@ export function DemonCreation() {
           </div>
           
           <div className="space-y-4">
+            {/* Character Type Selector */}
             <div>
-              <label className="block text-xs font-bold text-red-700 uppercase mb-1">Demon Name</label>
+              <label className="block text-xs font-bold text-purple-700 uppercase mb-2">NPC Type</label>
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setCharacterType('demon')}
+                  className={`p-3 rounded-lg font-bold text-sm transition ${
+                    characterType === 'demon'
+                      ? 'bg-red-900 text-white border-2 border-red-500'
+                      : 'bg-gray-950 text-gray-400 border border-gray-800 hover:border-red-900'
+                  }`}
+                >
+                  Demon
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCharacterType('slayer')}
+                  className={`p-3 rounded-lg font-bold text-sm transition ${
+                    characterType === 'slayer'
+                      ? 'bg-orange-900 text-white border-2 border-orange-500'
+                      : 'bg-gray-950 text-gray-400 border border-gray-800 hover:border-orange-900'
+                  }`}
+                >
+                  Slayer
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCharacterType('human')}
+                  className={`p-3 rounded-lg font-bold text-sm transition ${
+                    characterType === 'human'
+                      ? 'bg-blue-900 text-white border-2 border-blue-500'
+                      : 'bg-gray-950 text-gray-400 border border-gray-800 hover:border-blue-900'
+                  }`}
+                >
+                  Human
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-purple-700 uppercase mb-1">Name</label>
               <input 
                 value={name}
                 onChange={e => setName(e.target.value)}
-                className="w-full bg-gray-950 text-white p-3 rounded-lg border border-red-900 focus:outline-none focus:border-red-500"
+                className="w-full bg-gray-950 text-white p-3 rounded-lg border border-purple-900 focus:outline-none focus:border-purple-500"
                 placeholder="Name"
               />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
                 <div>
-                    <label className="block text-xs font-bold text-red-700 uppercase mb-1">Rank / Title</label>
+                    <label className="block text-xs font-bold text-purple-700 uppercase mb-1">Rank / Class</label>
                     <input 
                         value={rank}
-                        onChange={e => setRank(e.target.value)} // e.g. "Lower Moon 5"
-                        className="w-full bg-gray-950 text-white p-3 rounded-lg border border-red-900 focus:outline-none focus:border-red-500"
+                        onChange={e => setRank(e.target.value)}
+                        className="w-full bg-gray-950 text-white p-3 rounded-lg border border-purple-900 focus:outline-none focus:border-purple-500"
+                        placeholder={characterType === 'demon' ? 'Lower Moon 5' : characterType === 'slayer' ? 'Hashira' : 'Merchant'}
                     />
                 </div>
                 <div>
-                    <label className="block text-xs font-bold text-red-700 uppercase mb-1">Level (CR)</label>
+                    <label className="block text-xs font-bold text-purple-700 uppercase mb-1">Level (CR)</label>
                     <input 
                         type="number"
                         value={level}
                         onChange={e => setLevel(Number(e.target.value))}
-                        className="w-full bg-gray-950 text-white p-3 rounded-lg border border-red-900 focus:outline-none focus:border-red-500"
+                        className="w-full bg-gray-950 text-white p-3 rounded-lg border border-purple-900 focus:outline-none focus:border-purple-500"
                     />
                 </div>
             </div>
             
-             <div>
-              <label className="block text-xs font-bold text-red-700 uppercase mb-1">Blood Demon Art Name</label>
-              <input 
-                value={bloodDemonArtName}
-                onChange={e => setBloodDemonArtName(e.target.value)}
-                className="w-full bg-gray-950 text-white p-3 rounded-lg border border-red-900 focus:outline-none focus:border-red-500"
-                placeholder="e.g. Exploding Blood"
-              />
-            </div>
+            {characterType !== 'human' && (
+              <div>
+                <label className="block text-xs font-bold text-purple-700 uppercase mb-1">
+                  {characterType === 'demon' ? 'Blood Demon Art Name' : 'Breathing Style Name'}
+                </label>
+                <input 
+                  value={bloodDemonArtName}
+                  onChange={e => setBloodDemonArtName(e.target.value)}
+                  className="w-full bg-gray-950 text-white p-3 rounded-lg border border-purple-900 focus:outline-none focus:border-purple-500"
+                  placeholder={characterType === 'demon' ? 'e.g. Exploding Blood' : 'e.g. Water Breathing'}
+                />
+              </div>
+            )}
           </div>
         </section>
 
         {/* Manual Vitals */}
-        <section className="bg-gray-900 p-4 rounded-xl shadow-lg border border-red-900/30">
-            <h2 className="font-bold text-red-500 mb-4 flex items-center gap-2">
+        <section className="bg-gray-900 p-4 rounded-xl shadow-lg border border-purple-900/30">
+            <h2 className="font-bold text-purple-500 mb-4 flex items-center gap-2">
                 <Heart size={18}/> Combat Stats
             </h2>
             <div className="grid grid-cols-2 gap-3">
@@ -256,26 +302,26 @@ export function DemonCreation() {
         </section>
 
         {/* Stats Section */}
-        <section className="bg-gray-900 p-4 rounded-xl shadow-lg border border-red-900/30">
+        <section className="bg-gray-900 p-4 rounded-xl shadow-lg border border-purple-900/30">
           <div className="flex justify-between items-center mb-4">
-             <h2 className="font-bold text-red-500">Attributes</h2>
+             <h2 className="font-bold text-purple-500">Attributes</h2>
              <span className="text-xs text-gray-500 uppercase">Max 20</span>
           </div>
           
           <div className="space-y-4">
-            <StatStepper title="Strength" value={stats.str} onChange={v => handleStatChange('str', v)} max={20} color="red" />
-            <StatStepper title="Dexterity" value={stats.dex} onChange={v => handleStatChange('dex', v)} max={20} color="red" />
-            <StatStepper title="Constitution" value={stats.con} onChange={v => handleStatChange('con', v)} max={20} color="red" />
-            <StatStepper title="Intelligence" value={stats.int} onChange={v => handleStatChange('int', v)} max={20} color="red"/>
-            <StatStepper title="Wisdom" value={stats.wis} onChange={v => handleStatChange('wis', v)} max={20} color="red"/>
-            <StatStepper title="Charisma" value={stats.cha} onChange={v => handleStatChange('cha', v)} max={20} color="red"/>
+            <StatStepper title="Strength" value={stats.str} onChange={v => handleStatChange('str', v)} max={20} color="purple" />
+            <StatStepper title="Dexterity" value={stats.dex} onChange={v => handleStatChange('dex', v)} max={20} color="purple" />
+            <StatStepper title="Constitution" value={stats.con} onChange={v => handleStatChange('con', v)} max={20} color="purple" />
+            <StatStepper title="Intelligence" value={stats.int} onChange={v => handleStatChange('int', v)} max={20} color="purple" />
+            <StatStepper title="Wisdom" value={stats.wis} onChange={v => handleStatChange('wis', v)} max={20} color="purple" />
+            <StatStepper title="Charisma" value={stats.cha} onChange={v => handleStatChange('cha', v)} max={20} color="purple" />
           </div>
         </section>
 
         {/* Skills Section */}
-        <section className="bg-gray-900 p-4 rounded-xl shadow-lg border border-red-900/30">
+        <section className="bg-gray-900 p-4 rounded-xl shadow-lg border border-purple-900/30">
           <div className="flex justify-between items-center mb-4">
-               <h2 className="font-bold text-red-500">Skills</h2>
+               <h2 className="font-bold text-purple-500">Skills</h2>
                <span className="text-xs text-gray-500 uppercase">{selectedSkills.length} Selected</span>
           </div>
 
@@ -286,7 +332,7 @@ export function DemonCreation() {
                 onClick={() => handleSkillToggle(skill)}
                 className={`p-2 rounded text-xs text-left font-medium transition-colors ${
                   selectedSkills.includes(skill)
-                    ? 'bg-red-900/50 text-red-200 border border-red-700'
+                    ? 'bg-purple-900/50 text-purple-200 border border-purple-700'
                     : 'bg-gray-950 text-gray-500 border border-transparent hover:bg-gray-800'
                 }`}
               >
@@ -299,9 +345,9 @@ export function DemonCreation() {
         <button
           onClick={handleSaveCharacter}
           disabled={!name || isSaving}
-          className="w-full bg-red-600 text-white font-bold py-4 rounded-xl shadow-lg hover:bg-red-500 disabled:opacity-50 disabled:cursor-not-allowed sticky bottom-4"
+          className="w-full bg-purple-600 text-white font-bold py-4 rounded-xl shadow-lg hover:bg-purple-500 disabled:opacity-50 disabled:cursor-not-allowed sticky bottom-4"
         >
-          {isSaving ? "Summoning..." : "Create Demon"}
+          {isSaving ? "Creating..." : "Create NPC"}
         </button>
         
       </div>
