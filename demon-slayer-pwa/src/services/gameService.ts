@@ -126,7 +126,9 @@ export const GameService = {
       maxHP: character.maxHP || character.currentHP,
       currentBreaths: character.currentBreaths,
       maxBreaths: character.maxBreaths,
-      level: character.level
+      level: character.level,
+      photoUrl: character.photoUrl,
+      initiative: character.customInitiative || 0
     };
 
     await updateDoc(sessionRef, {
@@ -160,7 +162,9 @@ export const GameService = {
       maxHP: character.maxHP || character.currentHP,
       currentBreaths: character.currentBreaths,
       maxBreaths: character.maxBreaths,
-      level: character.level
+      level: character.level,
+      photoUrl: character.photoUrl,
+      initiative: character.customInitiative || 0
     };
 
     await updateDoc(sessionRef, {
