@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { Swords, Wind, Zap, AlertTriangle, Plus, Minus, ShieldAlert, X, Heart, Shield, ArrowUp, ArrowDown, Clock, Move } from 'lucide-react';
-import type { RPGCharacter, BreathingForm, ActionType, CombatAction } from '../../types';
+import { Swords, Wind, Zap, AlertTriangle, Plus, Minus, ShieldAlert, X, Heart, Shield, ArrowUp, ArrowDown, Clock } from 'lucide-react';
+import type { RPGCharacter, BreathingForm, CombatAction } from '../../types';
 import { Calculator } from '../../services/rules';
 import { DiceRollerOverlay } from '../../components/DiceRollerOverlay';
 import { BreathingFormEditorModal } from '../../components/BreathingFormEditorModal';

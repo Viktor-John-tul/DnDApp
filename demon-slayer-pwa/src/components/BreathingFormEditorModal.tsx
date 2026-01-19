@@ -24,11 +24,6 @@ export function BreathingFormEditorModal({ form: initialForm, onSave, onClose, i
       ? EFFECT_TYPES 
       : EFFECT_TYPES.filter(t => t.value !== 'heal');
 
-  // Filter effect types based on Demon status
-  const visibleEffectTypes = isDemon 
-      ? EFFECT_TYPES 
-      : EFFECT_TYPES.filter(t => t.value !== 'heal');
-
   const handleDone = () => {
     onSave(form);
     onClose();
