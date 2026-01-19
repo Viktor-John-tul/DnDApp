@@ -58,6 +58,16 @@ export function CharacterSheet() {
           if (character.dmNotes !== prev.dmNotes && prev.dmNotes !== undefined) {
                showToast("DM updated your private notes", 'info');
           }
+
+          // Check for HP changes
+          if (character.currentHP !== prev.currentHP && prev.currentHP !== undefined) {
+               const diff = character.currentHP - prev.currentHP;
+               if (diff < 0) {
+                   showToast(`Took ${Math.abs(diff)} Damage!`, 'error');
+               } else if (diff > 0) {
+                   showToast(`Healed ${diff} HP`, 'success');
+               }
+          }
       }
       
       prevCharacterRef.current = character;

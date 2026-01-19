@@ -239,7 +239,12 @@ export function DMView() {
               let newHP = char.currentHP + (hpAmount * multiplier);
               newHP = Math.max(0, Math.min(newHP, char.maxHP));
               
+              const updatedChar = { ...char, currentHP: newHP };
+              
               await CharacterService.update(charId, { currentHP: newHP });
+              if (sessionCode) {
+                  await GameService.syncCharacter(sessionCode, updatedChar);
+              }
           });
 
           await Promise.all(promises);
