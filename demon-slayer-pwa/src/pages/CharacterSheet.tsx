@@ -104,6 +104,19 @@ export function CharacterSheet() {
     return () => unsubscribe();
   }, [id, user]);
 
+  useEffect(() => {
+    if (!character?.activeSessionCode || !id) return;
+
+    const unsubscribe = GameService.subscribeToSession(character.activeSessionCode, async (session) => {
+        if (!session) {
+            showToast("Session ended by DM", "info");
+            await CharacterService.update(id, { activeSessionCode: "" });
+        }
+    });
+
+    return () => unsubscribe();
+  }, [character?.activeSessionCode, id]);
+
   const isReadOnly = (character && user) 
       ? (user.uid !== character.userId && character.type !== 'demon') 
       : true;
