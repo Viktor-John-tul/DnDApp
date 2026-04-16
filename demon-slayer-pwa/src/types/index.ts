@@ -78,20 +78,6 @@ export interface CampaignMember {
   joinedAt: number;
 }
 
-export type CampaignPrepType = 'npc' | 'demon' | 'location' | 'objective';
-
-export type CampaignPrepStatus = 'planned' | 'active' | 'resolved';
-
-export interface CampaignPrepItem {
-  id: string;
-  type: CampaignPrepType;
-  name: string;
-  notes?: string;
-  status: CampaignPrepStatus;
-  threat: 'low' | 'medium' | 'high' | 'boss' | null;
-  createdAt: number;
-}
-
 export interface Campaign {
   id: string;
   dmId: string;
@@ -100,7 +86,6 @@ export interface Campaign {
   createdAt: number;
   activeSessionCode?: string;
   members?: Record<string, CampaignMember>;
-  prepItems?: CampaignPrepItem[];
 }
 
 export interface BuffState {
