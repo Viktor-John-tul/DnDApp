@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Coins, Trash2, Plus, Minus, Weight, Backpack, Skull } from "lucide-react";
 import type { RPGCharacter, InventoryItem } from "../../types";
 import { useToast } from "../../context/ToastContext";
+import { useLayoutMode } from "../../context/LayoutModeContext";
 
 interface Props {
   character: RPGCharacter;
@@ -11,6 +12,8 @@ interface Props {
 
 export function InventoryTab({ character, onUpdate, readOnly }: Props) {
   const { showToast } = useToast();
+    const layoutMode = useLayoutMode();
+    const isDesktopLayout = layoutMode === "desktop";
   const [isAdding, setIsAdding] = useState(false);
   const [newItem, setNewItem] = useState<Partial<InventoryItem>>({ name: "", quantity: 1, weight: 0 });
 
@@ -79,7 +82,7 @@ export function InventoryTab({ character, onUpdate, readOnly }: Props) {
 
   return (
     <div className="space-y-5 sm:space-y-6 pb-24 md:pb-8">
-      <div className="md:grid md:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)] md:gap-6">
+    <div className={isDesktopLayout ? "grid grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)] gap-6" : ""}>
         {/* Money & Load Header */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {isDemon ? (
@@ -112,7 +115,7 @@ export function InventoryTab({ character, onUpdate, readOnly }: Props) {
         </div>
 
         {/* Item List */}
-        <div className="mt-5 md:mt-0 bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className={`bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden ${isDesktopLayout ? "mt-0" : "mt-5"}`}>
           <div className="bg-gray-50 px-4 py-3 border-b border-gray-100 flex justify-between items-center">
               <h3 className="font-bold text-gray-700 flex items-center gap-2">
                   <Backpack size={16} /> Inventory

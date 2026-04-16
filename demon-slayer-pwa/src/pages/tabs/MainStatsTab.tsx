@@ -22,8 +22,11 @@ interface Props {
   onUpdate: (updates: Partial<RPGCharacter>) => void;
   readOnly?: boolean;
 }
+import { useLayoutMode } from "../../context/LayoutModeContext";
 
 export function MainStatsTab({ character, onUpdate, readOnly }: Props) {
+  const layoutMode = useLayoutMode();
+  const isDesktopLayout = layoutMode === "desktop";
   const [showHealth, setShowHealth] = useState(false);
   const [activeRoll, setActiveRoll] = useState<{
         label: string; 
@@ -104,7 +107,7 @@ export function MainStatsTab({ character, onUpdate, readOnly }: Props) {
       </div>
 
       {!readOnly && (
-        <div className="hidden md:flex justify-end">
+        <div className={isDesktopLayout ? "flex justify-end" : "hidden"}>
           <button
               onClick={() => setShowHealth(true)}
               className="inline-flex items-center gap-3 rounded-2xl border border-red-100 bg-red-50 px-4 py-2 text-sm font-bold text-red-600 shadow-sm hover:bg-red-100"
@@ -180,7 +183,7 @@ export function MainStatsTab({ character, onUpdate, readOnly }: Props) {
 
       {/* Floating Buttons: Health */}
       {!readOnly && (
-      <div className="fixed bottom-24 right-2 sm:right-4 z-40 md:hidden">
+      <div className={isDesktopLayout ? "hidden" : "fixed bottom-24 right-2 sm:right-4 z-40"}>
         <button 
             onClick={() => setShowHealth(true)}
             className="flex flex-col items-center justify-center w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-red-500 text-white shadow-lg shadow-red-500/30 hover:scale-105 transition active:scale-95"

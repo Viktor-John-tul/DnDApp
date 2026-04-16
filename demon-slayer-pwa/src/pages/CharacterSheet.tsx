@@ -13,6 +13,7 @@ import { Shield, Swords, Backpack, Book, ChevronLeft, Loader2, Wifi } from "luci
 import { useAuth } from "../context/AuthContext";
 import { GameService } from "../services/gameService";
 import { useToast } from "../context/ToastContext";
+import { useLayoutMode } from "../context/LayoutModeContext";
 
 type TabId = 'stats' | 'combat' | 'inventory' | 'bio';
 
@@ -21,6 +22,8 @@ export function CharacterSheet() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { showToast } = useToast();
+    const layoutMode = useLayoutMode();
+    const isDesktopLayout = layoutMode === "desktop";
   
   const [character, setCharacter] = useState<RPGCharacter | null>(null);
   const [loading, setLoading] = useState(true);
@@ -273,7 +276,7 @@ export function CharacterSheet() {
 
         {/* Header */}
         <header className="sticky top-0 z-30 border-b border-white/70 bg-white/90 backdrop-blur px-3 sm:px-4 lg:px-6 py-3 shadow-sm">
-            <div className="mx-auto flex w-full max-w-7xl md:max-w-none items-center gap-3">
+            <div className={`mx-auto flex w-full ${isDesktopLayout ? "max-w-none" : "max-w-7xl"} items-center gap-3`}>
             <button 
                 onClick={() => navigate('/')}
                 className="p-1 -ml-2 rounded-full active:bg-gray-100 text-gray-500"
@@ -301,8 +304,8 @@ export function CharacterSheet() {
         </header>
 
         {/* Content Area */}
-        <main className="mx-auto grid w-full max-w-7xl md:max-w-none flex-1 gap-4 p-3 sm:p-4 md:grid-cols-[18rem_minmax(0,1fr)] md:gap-6 md:p-6 lg:grid-cols-[20rem_minmax(0,1fr)] lg:gap-8 lg:p-8 custom-scrollbar">
-            <aside className="hidden md:flex flex-col gap-4 self-start sticky top-24">
+        <main className={`mx-auto w-full flex-1 custom-scrollbar ${isDesktopLayout ? "grid max-w-none grid-cols-[20rem_minmax(0,1fr)] gap-6 p-6 lg:grid-cols-[22rem_minmax(0,1fr)] lg:gap-8 lg:p-8" : "max-w-7xl p-3 sm:p-4"}`}>
+            <aside className={`${isDesktopLayout ? "flex" : "hidden"} flex-col gap-4 self-start sticky top-24`}>
                 <section className="rounded-3xl border border-white/70 bg-white/90 p-5 shadow-lg shadow-gray-200/40 backdrop-blur">
                     <div className="flex items-center gap-4">
                         <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-slayer-orange to-orange-500 text-white flex items-center justify-center shadow-lg shadow-orange-200">
@@ -338,8 +341,8 @@ export function CharacterSheet() {
                 </section>
             </aside>
 
-            <section className="min-w-0 rounded-2xl border border-white/70 bg-white/95 shadow-xl md:shadow-2xl shadow-gray-200/40 backdrop-blur overflow-hidden md:overflow-visible md:rounded-none md:border-transparent md:bg-transparent md:shadow-none">
-                <div className="md:hidden border-b border-gray-100 px-3 pt-2">
+            <section className={`min-w-0 rounded-2xl border border-white/70 bg-white/95 shadow-xl shadow-gray-200/40 backdrop-blur overflow-hidden ${isDesktopLayout ? "rounded-none border-transparent bg-transparent shadow-none overflow-visible" : ""}`}>
+                <div className={`${isDesktopLayout ? "hidden" : "border-b border-gray-100 px-3 pt-2"}`}>
                     <div className="grid grid-cols-4 gap-1 rounded-2xl bg-gray-100 p-1">
                         <CompactTabButton active={activeTab === 'stats'} onClick={() => setActiveTab('stats')} icon={<Shield size={18} />} label="Stats" />
                         <CompactTabButton active={activeTab === 'combat'} onClick={() => setActiveTab('combat')} icon={<Swords size={18} />} label="Combat" />
@@ -348,7 +351,7 @@ export function CharacterSheet() {
                     </div>
                 </div>
 
-                <div className="overflow-y-auto p-3 sm:p-4 md:p-0 lg:p-0 custom-scrollbar md:overflow-visible md:pr-0">
+                <div className={`custom-scrollbar ${isDesktopLayout ? "overflow-visible p-0" : "overflow-y-auto p-3 sm:p-4"}`}>
                     {activeTab === 'stats' && <MainStatsTab character={character} onUpdate={handleUpdate} readOnly={isReadOnly} />}
                     {activeTab === 'combat' && <CombatTab character={character} onUpdate={handleUpdate} readOnly={isReadOnly} isDM={isDM} session={activeSession} />}
                     {activeTab === 'inventory' && <InventoryTab character={character} onUpdate={handleUpdate} readOnly={isReadOnly} />}
@@ -358,7 +361,7 @@ export function CharacterSheet() {
         </main>
 
         {/* Bottom Navigation */}
-        <nav className="md:hidden bg-white border-t border-gray-200 px-2 sm:px-4 py-2 pb-[calc(1.25rem+env(safe-area-inset-bottom))] sm:pb-6 flex justify-between items-center gap-1 sm:gap-2 z-30 sticky bottom-0">
+        <nav className={`${isDesktopLayout ? "hidden" : "bg-white border-t border-gray-200 px-2 sm:px-4 py-2 pb-[calc(1.25rem+env(safe-area-inset-bottom))] sm:pb-6 flex justify-between items-center gap-1 sm:gap-2 z-30 sticky bottom-0"}`}>
             <TabButton 
                 active={activeTab === 'stats'} 
                 onClick={() => setActiveTab('stats')} 
