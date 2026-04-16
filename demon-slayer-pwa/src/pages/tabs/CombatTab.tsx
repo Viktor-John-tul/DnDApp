@@ -72,14 +72,15 @@ export function CombatTab({ character, onUpdate, readOnly, isDM, session }: Prop
   const maxLoad = Calculator.getMaxLoad(character.strength);
   const isEncumbered = character.type === 'demon' ? false : currentLoad > maxLoad;
 
-  const isDemon = character.type === 'demon';
+    const isDemon = character.type === 'demon';
     const isSlayer = isSlayerCharacter(character);
     const effectiveMaxBreaths = getEffectiveMaxBreaths(character);
     const canUseForms = isDemon || (isSlayer && character.level >= 2);
 
     // Combat & Action Economy Logic
     const combat = session?.combat;
-    const isMyTurn = combat?.isActive && combat.participants[combat.currentTurnIndex]?.id === character.id;
+    const isCombatActive = Boolean(combat?.isActive);
+    const isMyTurn = isCombatActive && combat?.participants[combat.currentTurnIndex]?.id === character.id;
     const MAX_ACTIONS = isSlayer && character.level >= 12 ? 3 : 2;
 
   // Helper: Status Effects
@@ -135,16 +136,18 @@ export function CombatTab({ character, onUpdate, readOnly, isDM, session }: Prop
         }
 
         // Check action economy in combat
-        if (combat?.isActive && !canUseAction('main')) {
+        if (isCombatActive && !canUseAction('main')) {
             showToast("No actions remaining!", "error");
             return;
         }
 
-        const canFreeForm = isSlayer && character.level >= 2 && combat?.isActive && isMyTurn && !freeFormUsedThisTurn;
-        const canBladeMemory = isSlayer && character.level >= 12 && combat?.isActive && isMyTurn && !bladeMemoryUsedThisTurn;
+        const canFreeForm = isSlayer && character.level >= 2 && isCombatActive && isMyTurn && !freeFormUsedThisTurn;
+        const canBladeMemory = isSlayer && character.level >= 12 && isCombatActive && isMyTurn && !bladeMemoryUsedThisTurn;
         const bladeMemoryApplies = canBladeMemory && usedFormsThisCombat.has(form.id);
 
-        const baseCost = isDemon ? (form.spCost || 0) : getSlayerFormCost(character.level, formNumber, bladeMemoryApplies && !canFreeForm);
+        const baseCost = isDemon
+            ? (form.spCost || 0)
+            : getSlayerFormCost(character.level, formNumber, bladeMemoryApplies && !canFreeForm);
         const cost = canFreeForm ? 0 : baseCost;
         const nextBreaths = character.currentBreaths - cost;
 
@@ -154,22 +157,22 @@ export function CombatTab({ character, onUpdate, readOnly, isDM, session }: Prop
 
         // Check for Overdraft Condition
         if (nextBreaths < 0 || character.currentBreaths < 0) {
-                // Trigger Overdraft Save first
-                setActiveRoll({
-                        label: `Overdraft Save (DC ${character.currentOverdraftDC})`,
-                        modifier: conMod + (character.proficientSavingThrows.includes("CON") ? proficiency : 0),
-                        isSave: true,
-                        pendingForm: form,
-                        pendingRefCost: cost
-                } as any);
-                return;
+            // Trigger Overdraft Save first
+            setActiveRoll({
+                label: `Overdraft Save (DC ${character.currentOverdraftDC})`,
+                modifier: conMod + (character.proficientSavingThrows.includes("CON") ? proficiency : 0),
+                isSave: true,
+                pendingForm: form,
+                pendingRefCost: cost
+            } as any);
+            return;
         }
 
         // Normal Execution
         commitTechnique(form, cost);
-    
+
         // Consume action in combat
-        if (combat?.isActive && isMyTurn) {
+        if (isCombatActive && isMyTurn) {
             useAction('main');
         }
     };
@@ -862,8 +865,8 @@ export function CombatTab({ character, onUpdate, readOnly, isDM, session }: Prop
         ) : (
             character.breathingForms.map((form, index) => {
                 const formNumber = index + 1;
-                const canFreeForm = isSlayer && character.level >= 2 && combat?.isActive && isMyTurn && !freeFormUsedThisTurn;
-                const canBladeMemory = isSlayer && character.level >= 12 && combat?.isActive && isMyTurn && !bladeMemoryUsedThisTurn;
+                const canFreeForm = isSlayer && character.level >= 2 && isCombatActive && isMyTurn && !freeFormUsedThisTurn;
+                const canBladeMemory = isSlayer && character.level >= 12 && isCombatActive && isMyTurn && !bladeMemoryUsedThisTurn;
                 const bladeMemoryApplies = canBladeMemory && usedFormsThisCombat.has(form.id);
                 const baseCost = isDemon ? form.spCost : getSlayerFormCost(character.level, formNumber, bladeMemoryApplies && !canFreeForm);
                 const cost = canFreeForm ? 0 : baseCost;
