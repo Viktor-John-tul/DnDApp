@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, Copy, PlayCircle, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, ChevronDown, ChevronUp, Copy, PlayCircle, Plus, Trash2, Users } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { useConfirm } from "../../context/ConfirmContext";
 import { useToast } from "../../context/ToastContext";
@@ -19,6 +19,7 @@ export function DMCampaigns() {
   const [showCreate, setShowCreate] = useState(false);
   const [nameInput, setNameInput] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [expandedCampaignId, setExpandedCampaignId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -96,6 +97,10 @@ export function DMCampaigns() {
     }
   };
 
+  const toggleMembers = (campaignId: string) => {
+    setExpandedCampaignId((prev) => (prev === campaignId ? null : campaignId));
+  };
+
   return (
     <div className="min-h-screen bg-gray-100 p-4 pb-24">
       <header className="flex items-center justify-between mb-6">
@@ -125,7 +130,11 @@ export function DMCampaigns() {
             </div>
           )}
 
-          {campaigns.map((campaign) => (
+          {campaigns.map((campaign) => {
+            const members = Object.values(campaign.members || {}).sort((a, b) => a.name.localeCompare(b.name));
+            const isExpanded = expandedCampaignId === campaign.id;
+
+            return (
             <div key={campaign.id} className="bg-white rounded-2xl p-4 border border-gray-200 shadow-sm">
               <div className="flex items-start justify-between gap-3">
                 <div>
@@ -169,8 +178,38 @@ export function DMCampaigns() {
                   <Trash2 size={16} />
                 </button>
               </div>
+
+              <button
+                onClick={() => toggleMembers(campaign.id)}
+                className="mt-4 w-full flex items-center justify-between px-3 py-2 rounded-xl border border-gray-200 text-sm font-bold text-gray-600 hover:bg-gray-50"
+              >
+                <span className="flex items-center gap-2">
+                  <Users size={16} /> Members ({members.length})
+                </span>
+                {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+              </button>
+
+              {isExpanded && (
+                <div className="mt-3 space-y-2">
+                  {members.length === 0 ? (
+                    <div className="text-sm text-gray-400">No players joined yet.</div>
+                  ) : (
+                    members.map((member) => (
+                      <div key={member.id} className="flex items-center justify-between rounded-xl border border-gray-200 bg-gray-50 px-3 py-2">
+                        <div className="text-sm font-semibold text-gray-800">{member.name}</div>
+                        <Link
+                          to={`/character/${member.id}`}
+                          className="text-xs font-bold text-slayer-orange hover:text-orange-600"
+                        >
+                          View Sheet
+                        </Link>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
             </div>
-          ))}
+          )})}
         </div>
       )}
 
