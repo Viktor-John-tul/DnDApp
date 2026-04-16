@@ -338,7 +338,7 @@ export function CharacterSheet() {
                 </section>
             </aside>
 
-            <section className="min-w-0 rounded-2xl border border-white/70 bg-white/95 shadow-xl md:shadow-2xl shadow-gray-200/40 backdrop-blur overflow-hidden">
+            <section className="min-w-0 rounded-2xl border border-white/70 bg-white/95 shadow-xl md:shadow-2xl shadow-gray-200/40 backdrop-blur overflow-hidden md:overflow-visible md:rounded-none md:border-transparent md:bg-transparent md:shadow-none">
                 <div className="md:hidden border-b border-gray-100 px-3 pt-2">
                     <div className="grid grid-cols-4 gap-1 rounded-2xl bg-gray-100 p-1">
                         <CompactTabButton active={activeTab === 'stats'} onClick={() => setActiveTab('stats')} icon={<Shield size={18} />} label="Stats" />
@@ -348,7 +348,7 @@ export function CharacterSheet() {
                     </div>
                 </div>
 
-                <div className="overflow-y-auto p-3 sm:p-4 md:p-5 lg:p-6 custom-scrollbar">
+                <div className="overflow-y-auto p-3 sm:p-4 md:p-0 lg:p-0 custom-scrollbar md:overflow-visible md:pr-0">
                     {activeTab === 'stats' && <MainStatsTab character={character} onUpdate={handleUpdate} readOnly={isReadOnly} />}
                     {activeTab === 'combat' && <CombatTab character={character} onUpdate={handleUpdate} readOnly={isReadOnly} isDM={isDM} session={activeSession} />}
                     {activeTab === 'inventory' && <InventoryTab character={character} onUpdate={handleUpdate} readOnly={isReadOnly} />}

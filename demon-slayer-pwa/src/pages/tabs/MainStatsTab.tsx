@@ -103,6 +103,18 @@ export function MainStatsTab({ character, onUpdate, readOnly }: Props) {
         ))}
       </div>
 
+      {!readOnly && (
+        <div className="hidden md:flex justify-end">
+          <button
+              onClick={() => setShowHealth(true)}
+              className="inline-flex items-center gap-3 rounded-2xl border border-red-100 bg-red-50 px-4 py-2 text-sm font-bold text-red-600 shadow-sm hover:bg-red-100"
+          >
+              <Heart size={18} fill="currentColor" />
+              Manage HP ({character.currentHP}/{maxHP})
+          </button>
+        </div>
+      )}
+
         <div className="md:grid md:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] md:gap-6">
         <div className="space-y-5 sm:space-y-6">
           {/* Attributes Grid */}
@@ -168,7 +180,7 @@ export function MainStatsTab({ character, onUpdate, readOnly }: Props) {
 
       {/* Floating Buttons: Health */}
       {!readOnly && (
-      <div className="fixed bottom-24 right-2 sm:right-4 z-40">
+      <div className="fixed bottom-24 right-2 sm:right-4 z-40 md:hidden">
         <button 
             onClick={() => setShowHealth(true)}
             className="flex flex-col items-center justify-center w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-red-500 text-white shadow-lg shadow-red-500/30 hover:scale-105 transition active:scale-95"
