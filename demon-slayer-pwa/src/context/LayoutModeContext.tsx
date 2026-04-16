@@ -8,13 +8,21 @@ const getLayoutMode = (): LayoutMode => {
   if (typeof window === "undefined") return "desktop";
 
   const ua = navigator.userAgent || "";
-  const isMobileUa = /Android|iPhone|iPad|iPod/i.test(ua);
-  const isDesktopUa = /Macintosh|Windows|Linux/i.test(ua) && !isMobileUa;
+  const platform = navigator.platform || "";
+  const uaDataPlatform = (navigator as any).userAgentData?.platform || "";
+  const platformHint = `${platform} ${uaDataPlatform} ${ua}`;
+  const maxTouchPoints = navigator.maxTouchPoints || 0;
+
+  const isMacLike = /Macintosh|Mac OS X|MacIntel|Mac/i.test(platformHint);
+  const isIpadLike = isMacLike && maxTouchPoints > 1;
+  const isMobileUa = /Android|iPhone|iPad|iPod/i.test(ua) || isIpadLike;
+  const isDesktopUa = /Macintosh|Mac OS X|Windows|Linux/i.test(ua) && !isMobileUa;
+
   const hasFinePointer = window.matchMedia("(pointer: fine)").matches;
   const canHover = window.matchMedia("(hover: hover)").matches;
   const hasCoarsePointer = window.matchMedia("(pointer: coarse)").matches;
-  const maxTouchPoints = navigator.maxTouchPoints || 0;
 
+  if (isMacLike && !isIpadLike) return "desktop";
   if (isDesktopUa || (hasFinePointer && canHover)) return "desktop";
   if (isMobileUa || hasCoarsePointer || maxTouchPoints > 0) return "touch";
   return "desktop";
