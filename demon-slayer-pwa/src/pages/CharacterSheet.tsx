@@ -265,14 +265,15 @@ export function CharacterSheet() {
   if (!character) return null;
 
     return (
-        <div className="bg-gray-50 h-[100dvh] flex flex-col w-full max-w-5xl xl:max-w-6xl mx-auto shadow-2xl overflow-hidden relative">
+        <div className="min-h-[100dvh] bg-gradient-to-br from-gray-100 via-gray-50 to-orange-50/40 text-gray-900">
         
         {character.currentHP <= 0 && (
             <DeathScreen character={character} onUpdate={handleUpdate} />
         )}
 
         {/* Header */}
-        <header className="bg-white border-b border-gray-100 px-3 sm:px-4 py-3 flex items-center gap-3 sticky top-0 z-30 shadow-sm">
+        <header className="sticky top-0 z-30 border-b border-white/70 bg-white/90 backdrop-blur px-3 sm:px-4 lg:px-6 py-3 shadow-sm">
+            <div className="mx-auto flex w-full max-w-7xl items-center gap-3">
             <button 
                 onClick={() => navigate('/')}
                 className="p-1 -ml-2 rounded-full active:bg-gray-100 text-gray-500"
@@ -291,23 +292,73 @@ export function CharacterSheet() {
             {!isReadOnly && (
                 <button 
                     onClick={() => setShowJoinModal(true)}
-                    className={`p-2 rounded-full ${character.activeSessionCode ? 'text-green-500 bg-green-50' : 'text-gray-400 hover:bg-gray-100'}`}
+                    className={`ml-auto p-2 rounded-full ${character.activeSessionCode ? 'text-green-500 bg-green-50' : 'text-gray-400 hover:bg-gray-100'}`}
                 >
                     <Wifi size={20} />
                 </button>
             )}
+            </div>
         </header>
 
         {/* Content Area */}
-        <main className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-5 custom-scrollbar">
-            {activeTab === 'stats' && <MainStatsTab character={character} onUpdate={handleUpdate} readOnly={isReadOnly} />}
-            {activeTab === 'combat' && <CombatTab character={character} onUpdate={handleUpdate} readOnly={isReadOnly} isDM={isDM} session={activeSession} />}
-            {activeTab === 'inventory' && <InventoryTab character={character} onUpdate={handleUpdate} readOnly={isReadOnly} />}
-            {activeTab === 'bio' && <BioTab character={character} onUpdate={handleUpdate} readOnly={isReadOnly} />}
+        <main className="mx-auto grid w-full max-w-7xl flex-1 gap-4 p-3 sm:p-4 md:grid-cols-[16rem_minmax(0,1fr)] md:gap-5 md:p-5 lg:grid-cols-[18rem_minmax(0,1fr)] lg:gap-6 lg:p-6 custom-scrollbar">
+            <aside className="hidden md:flex flex-col gap-4 self-start sticky top-24">
+                <section className="rounded-3xl border border-white/70 bg-white/90 p-5 shadow-lg shadow-gray-200/40 backdrop-blur">
+                    <div className="flex items-center gap-4">
+                        <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-slayer-orange to-orange-500 text-white flex items-center justify-center shadow-lg shadow-orange-200">
+                            <Shield size={28} />
+                        </div>
+                        <div className="min-w-0">
+                            <div className="text-xs font-bold uppercase tracking-widest text-gray-400">Character</div>
+                            <h2 className="truncate text-xl font-black text-gray-900">{character.name}</h2>
+                            <p className="truncate text-sm text-gray-500">Lv.{character.level} {character.characterClass}</p>
+                        </div>
+                    </div>
+
+                    <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                        <div className="rounded-2xl bg-gray-50 p-3">
+                            <div className="text-[10px] font-bold uppercase tracking-widest text-gray-400">HP</div>
+                            <div className="mt-1 text-lg font-black">{character.currentHP}/{character.maxHP}</div>
+                        </div>
+                        <div className="rounded-2xl bg-gray-50 p-3">
+                            <div className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Session</div>
+                            <div className="mt-1 text-lg font-black">{character.activeSessionCode || 'Idle'}</div>
+                        </div>
+                    </div>
+                </section>
+
+                <section className="rounded-3xl border border-white/70 bg-white/90 p-3 shadow-lg shadow-gray-200/40 backdrop-blur">
+                    <div className="mb-3 px-2 text-[10px] font-bold uppercase tracking-[0.25em] text-gray-400">Tabs</div>
+                    <div className="flex flex-col gap-2">
+                        <DesktopTabButton active={activeTab === 'stats'} onClick={() => setActiveTab('stats')} icon={<Shield size={18} />} label="Stats" />
+                        <DesktopTabButton active={activeTab === 'combat'} onClick={() => setActiveTab('combat')} icon={<Swords size={18} />} label="Combat" />
+                        <DesktopTabButton active={activeTab === 'inventory'} onClick={() => setActiveTab('inventory')} icon={<Backpack size={18} />} label="Bag" />
+                        <DesktopTabButton active={activeTab === 'bio'} onClick={() => setActiveTab('bio')} icon={<Book size={18} />} label="Bio" />
+                    </div>
+                </section>
+            </aside>
+
+            <section className="min-w-0 rounded-2xl md:rounded-3xl border border-white/70 bg-white/95 shadow-xl md:shadow-2xl shadow-gray-200/40 backdrop-blur overflow-hidden">
+                <div className="md:hidden border-b border-gray-100 px-3 pt-2">
+                    <div className="grid grid-cols-4 gap-1 rounded-2xl bg-gray-100 p-1">
+                        <CompactTabButton active={activeTab === 'stats'} onClick={() => setActiveTab('stats')} icon={<Shield size={18} />} label="Stats" />
+                        <CompactTabButton active={activeTab === 'combat'} onClick={() => setActiveTab('combat')} icon={<Swords size={18} />} label="Combat" />
+                        <CompactTabButton active={activeTab === 'inventory'} onClick={() => setActiveTab('inventory')} icon={<Backpack size={18} />} label="Bag" />
+                        <CompactTabButton active={activeTab === 'bio'} onClick={() => setActiveTab('bio')} icon={<Book size={18} />} label="Bio" />
+                    </div>
+                </div>
+
+                <div className="overflow-y-auto p-3 sm:p-4 md:p-5 lg:p-6 custom-scrollbar">
+                    {activeTab === 'stats' && <MainStatsTab character={character} onUpdate={handleUpdate} readOnly={isReadOnly} />}
+                    {activeTab === 'combat' && <CombatTab character={character} onUpdate={handleUpdate} readOnly={isReadOnly} isDM={isDM} session={activeSession} />}
+                    {activeTab === 'inventory' && <InventoryTab character={character} onUpdate={handleUpdate} readOnly={isReadOnly} />}
+                    {activeTab === 'bio' && <BioTab character={character} onUpdate={handleUpdate} readOnly={isReadOnly} />}
+                </div>
+            </section>
         </main>
 
         {/* Bottom Navigation */}
-        <nav className="bg-white border-t border-gray-200 px-2 sm:px-4 lg:px-6 py-2 pb-[calc(1.25rem+env(safe-area-inset-bottom))] sm:pb-6 flex justify-between items-center gap-1 sm:gap-2 z-30 sticky bottom-0">
+        <nav className="md:hidden bg-white border-t border-gray-200 px-2 sm:px-4 py-2 pb-[calc(1.25rem+env(safe-area-inset-bottom))] sm:pb-6 flex justify-between items-center gap-1 sm:gap-2 z-30 sticky bottom-0">
             <TabButton 
                 active={activeTab === 'stats'} 
                 onClick={() => setActiveTab('stats')} 
@@ -436,6 +487,32 @@ function TabButton({ active, onClick, icon, label }: any) {
                 {icon}
             </div>
             <span className="text-[10px] font-bold">{label}</span>
+        </button>
+    );
+}
+
+function DesktopTabButton({ active, onClick, icon, label }: any) {
+    return (
+        <button
+            onClick={onClick}
+            className={`flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left transition-all ${active ? 'bg-gray-900 text-white shadow-lg shadow-gray-200' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}
+        >
+            <div className={`rounded-xl p-2 ${active ? 'bg-white/10' : 'bg-white'}`}>
+                {icon}
+            </div>
+            <span className="text-sm font-bold">{label}</span>
+        </button>
+    );
+}
+
+function CompactTabButton({ active, onClick, icon, label }: any) {
+    return (
+        <button
+            onClick={onClick}
+            className={`flex flex-col items-center justify-center gap-1 rounded-xl px-2 py-2 text-xs font-bold transition-all ${active ? 'bg-white text-black shadow-sm' : 'text-gray-500'}`}
+        >
+            {icon}
+            <span>{label}</span>
         </button>
     );
 }
