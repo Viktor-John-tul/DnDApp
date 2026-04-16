@@ -273,7 +273,7 @@ export function CharacterSheet() {
 
         {/* Header */}
         <header className="sticky top-0 z-30 border-b border-white/70 bg-white/90 backdrop-blur px-3 sm:px-4 lg:px-6 py-3 shadow-sm">
-            <div className="mx-auto flex w-full max-w-7xl items-center gap-3">
+            <div className="mx-auto flex w-full max-w-7xl md:max-w-none items-center gap-3">
             <button 
                 onClick={() => navigate('/')}
                 className="p-1 -ml-2 rounded-full active:bg-gray-100 text-gray-500"
@@ -301,7 +301,7 @@ export function CharacterSheet() {
         </header>
 
         {/* Content Area */}
-        <main className="mx-auto grid w-full max-w-7xl flex-1 gap-4 p-3 sm:p-4 md:grid-cols-[16rem_minmax(0,1fr)] md:gap-5 md:p-5 lg:grid-cols-[18rem_minmax(0,1fr)] lg:gap-6 lg:p-6 custom-scrollbar">
+        <main className="mx-auto grid w-full max-w-7xl md:max-w-none flex-1 gap-4 p-3 sm:p-4 md:grid-cols-[18rem_minmax(0,1fr)] md:gap-6 md:p-6 lg:grid-cols-[20rem_minmax(0,1fr)] lg:gap-8 lg:p-8 custom-scrollbar">
             <aside className="hidden md:flex flex-col gap-4 self-start sticky top-24">
                 <section className="rounded-3xl border border-white/70 bg-white/90 p-5 shadow-lg shadow-gray-200/40 backdrop-blur">
                     <div className="flex items-center gap-4">
@@ -338,7 +338,7 @@ export function CharacterSheet() {
                 </section>
             </aside>
 
-            <section className="min-w-0 rounded-2xl md:rounded-3xl border border-white/70 bg-white/95 shadow-xl md:shadow-2xl shadow-gray-200/40 backdrop-blur overflow-hidden">
+            <section className="min-w-0 rounded-2xl border border-white/70 bg-white/95 shadow-xl md:shadow-2xl shadow-gray-200/40 backdrop-blur overflow-hidden">
                 <div className="md:hidden border-b border-gray-100 px-3 pt-2">
                     <div className="grid grid-cols-4 gap-1 rounded-2xl bg-gray-100 p-1">
                         <CompactTabButton active={activeTab === 'stats'} onClick={() => setActiveTab('stats')} icon={<Shield size={18} />} label="Stats" />

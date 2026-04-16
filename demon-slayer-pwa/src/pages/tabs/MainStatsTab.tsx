@@ -103,64 +103,68 @@ export function MainStatsTab({ character, onUpdate, readOnly }: Props) {
         ))}
       </div>
 
-      {/* Attributes Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2 sm:gap-3">
-        <AttributeCard 
+        <div className="md:grid md:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] md:gap-6">
+        <div className="space-y-5 sm:space-y-6">
+          {/* Attributes Grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3">
+          <AttributeCard 
             title="STR" score={character.strength}
             onCheck={() => handleRoll("STR Check", Calculator.getModifier(character.strength))} 
             onSave={() => handleRoll("STR Save", Calculator.getModifier(character.strength) + (character.proficientSavingThrows.includes("STR") ? proficiency : 0))}
-        />
-        <AttributeCard 
+          />
+          <AttributeCard 
             title="DEX" score={character.dexterity}
             onCheck={() => handleRoll("DEX Check", Calculator.getModifier(character.dexterity), isEncumbered)} 
             onSave={() => handleRoll("DEX Save", Calculator.getModifier(character.dexterity) + (character.proficientSavingThrows.includes("DEX") ? proficiency : 0), isEncumbered)}
-        />
-        <AttributeCard 
+          />
+          <AttributeCard 
             title="CON" score={character.constitution}
             onCheck={() => handleRoll("CON Check", Calculator.getModifier(character.constitution))} 
             onSave={() => handleRoll("CON Save", Calculator.getModifier(character.constitution) + (character.proficientSavingThrows.includes("CON") ? proficiency : 0))}
-        />
-        <AttributeCard 
+          />
+          <AttributeCard 
             title="INT" score={character.intelligence}
             onCheck={() => handleRoll("INT Check", Calculator.getModifier(character.intelligence))} 
             onSave={() => handleRoll("INT Save", Calculator.getModifier(character.intelligence) + (character.proficientSavingThrows.includes("INT") ? proficiency : 0))}
-        />
-        <AttributeCard 
+          />
+          <AttributeCard 
             title="WIS" score={character.wisdom}
             onCheck={() => handleRoll("WIS Check", Calculator.getModifier(character.wisdom))} 
             onSave={() => handleRoll("WIS Save", Calculator.getModifier(character.wisdom) + (character.proficientSavingThrows.includes("WIS") ? proficiency : 0))}
-        />
-        <AttributeCard 
+          />
+          <AttributeCard 
             title="CHA" score={character.charisma}
             onCheck={() => handleRoll("CHA Check", Calculator.getModifier(character.charisma))} 
             onSave={() => handleRoll("CHA Save", Calculator.getModifier(character.charisma) + (character.proficientSavingThrows.includes("CHA") ? proficiency : 0))}
-        />
-      </div>
+          />
+          </div>
+        </div>
 
-      {/* Skills List */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-        <div className="bg-gray-50 px-3 sm:px-4 py-3 border-b border-gray-100 flex justify-between items-center">
+        {/* Skills List */}
+        <div className="mt-6 md:mt-0 bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+          <div className="bg-gray-50 px-3 sm:px-4 py-3 border-b border-gray-100 flex justify-between items-center">
             <h3 className="font-bold text-gray-700">Skills</h3>
             <span className="text-xs text-gray-400 font-medium uppercase">Bonus</span>
-        </div>
-        <div className="divide-y divide-gray-100">
+          </div>
+          <div className="divide-y divide-gray-100">
             {ALL_SKILLS.map(skill => (
-                <SkillRow 
-                    key={skill}
-                    skill={skill}
-                    stats={{str: character.strength, dex: character.dexterity, con: character.constitution, int: character.intelligence, wis: character.wisdom, cha: character.charisma}}
-                    proficiencyBonus={proficiency}
-                    isProficient={character.proficientSkills.includes(skill)}
-                    isEncumbered={isEncumbered}
-                    onRoll={() => handleRoll(
-                        skill.split("(")[0].trim(), 
-                        Calculator.getSkillBonus(skill, {str: character.strength, dex: character.dexterity, con: character.constitution, int: character.intelligence, wis: character.wisdom, cha: character.charisma}, proficiency, character.proficientSkills.includes(skill)),
-                        Calculator.hasEncumbranceDisadvantage(skill, isEncumbered)
-                    )}
-                />
+              <SkillRow 
+                key={skill}
+                skill={skill}
+                stats={{str: character.strength, dex: character.dexterity, con: character.constitution, int: character.intelligence, wis: character.wisdom, cha: character.charisma}}
+                proficiencyBonus={proficiency}
+                isProficient={character.proficientSkills.includes(skill)}
+                isEncumbered={isEncumbered}
+                onRoll={() => handleRoll(
+                  skill.split("(")[0].trim(), 
+                  Calculator.getSkillBonus(skill, {str: character.strength, dex: character.dexterity, con: character.constitution, int: character.intelligence, wis: character.wisdom, cha: character.charisma}, proficiency, character.proficientSkills.includes(skill)),
+                  Calculator.hasEncumbranceDisadvantage(skill, isEncumbered)
+                )}
+              />
             ))}
+          </div>
         </div>
-      </div>
+        </div>
 
       {/* Floating Buttons: Health */}
       {!readOnly && (

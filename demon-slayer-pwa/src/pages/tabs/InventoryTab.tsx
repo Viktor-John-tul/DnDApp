@@ -79,104 +79,105 @@ export function InventoryTab({ character, onUpdate, readOnly }: Props) {
 
   return (
     <div className="space-y-5 sm:space-y-6 pb-24 md:pb-8">
-      
-      {/* Money & Load Header */}
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {isDemon ? (
-             <div className="bg-red-950 rounded-xl p-4 border border-red-900 flex flex-col items-center justify-center relative overflow-hidden">
-                <div className="absolute top-0 right-0 p-1 opacity-20"><Skull size={40} /></div>
-                <div className="flex items-center gap-3 z-10">
-                    <button onClick={() => !readOnly && updateKills(-1)} className={`w-8 h-8 flex items-center justify-center bg-red-800 text-red-200 rounded font-bold ${readOnly ? 'opacity-50 cursor-not-allowed' : 'hover:bg-red-700'}`}><Minus size={14}/></button>
-                    <div className="flex flex-col items-center">
-                         <span className="text-3xl font-black text-red-500">{character.kills || 0}</span>
-                         <span className="text-[10px] font-bold text-red-700 uppercase">Humans Devoured</span>
+      <div className="md:grid md:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)] md:gap-6">
+        {/* Money & Load Header */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {isDemon ? (
+                 <div className="bg-red-950 rounded-xl p-4 border border-red-900 flex flex-col items-center justify-center relative overflow-hidden">
+                    <div className="absolute top-0 right-0 p-1 opacity-20"><Skull size={40} /></div>
+                    <div className="flex items-center gap-3 z-10">
+                        <button onClick={() => !readOnly && updateKills(-1)} className={`w-8 h-8 flex items-center justify-center bg-red-800 text-red-200 rounded font-bold ${readOnly ? 'opacity-50 cursor-not-allowed' : 'hover:bg-red-700'}`}><Minus size={14}/></button>
+                        <div className="flex flex-col items-center">
+                             <span className="text-3xl font-black text-red-500">{character.kills || 0}</span>
+                             <span className="text-[10px] font-bold text-red-700 uppercase">Humans Devoured</span>
+                        </div>
+                        <button onClick={() => !readOnly && updateKills(1)} className={`w-8 h-8 flex items-center justify-center bg-red-600 text-white rounded font-bold ${readOnly ? 'opacity-50 cursor-not-allowed' : 'hover:bg-red-500'}`}><Plus size={14}/></button>
                     </div>
-                    <button onClick={() => !readOnly && updateKills(1)} className={`w-8 h-8 flex items-center justify-center bg-red-600 text-white rounded font-bold ${readOnly ? 'opacity-50 cursor-not-allowed' : 'hover:bg-red-500'}`}><Plus size={14}/></button>
                 </div>
-            </div>
-        ) : (
-            <div className="bg-amber-50 rounded-xl p-4 border border-amber-100 flex flex-col items-center justify-center">
-                <Coins className="text-amber-500 mb-1" size={20} />
-                <span className="text-2xl font-black text-amber-900">{character.gold}</span>
-                <span className="text-[10px] font-bold text-amber-600 uppercase">Gold Pieces</span>
-            </div>
-        )}
+            ) : (
+                <div className="bg-amber-50 rounded-xl p-4 border border-amber-100 flex flex-col items-center justify-center">
+                    <Coins className="text-amber-500 mb-1" size={20} />
+                    <span className="text-2xl font-black text-amber-900">{character.gold}</span>
+                    <span className="text-[10px] font-bold text-amber-600 uppercase">Gold Pieces</span>
+                </div>
+            )}
 
-        {!isDemon && (
-            <div className={`rounded-xl p-4 border flex flex-col items-center justify-center ${currentLoad > maxLoad ? 'bg-red-50 border-red-100 text-red-900' : 'bg-gray-50 border-gray-100 text-gray-700'}`}>
-                <Weight className={currentLoad > maxLoad ? "text-red-500 mb-1" : "text-gray-400 mb-1"} size={20} />
-                <span className="text-2xl font-black">{currentLoad} <span className="text-sm font-normal text-gray-400">/ {maxLoad}</span></span>
-                <span className="text-[10px] font-bold uppercase opacity-60">Lbs Carried</span>
-            </div>
-        )}
-      </div>
-
-      {/* Item List */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="bg-gray-50 px-4 py-3 border-b border-gray-100 flex justify-between items-center">
-            <h3 className="font-bold text-gray-700 flex items-center gap-2">
-                <Backpack size={16} /> Inventory
-            </h3>
-            {!readOnly && (
-            <button 
-                onClick={() => setIsAdding(!isAdding)}
-                className="text-xs bg-gray-900 text-white px-2 py-1 rounded-md font-bold"
-            >
-                {isAdding ? "Cancel" : "Add Item"}
-            </button>
+            {!isDemon && (
+                <div className={`rounded-xl p-4 border flex flex-col items-center justify-center ${currentLoad > maxLoad ? 'bg-red-50 border-red-100 text-red-900' : 'bg-gray-50 border-gray-100 text-gray-700'}`}>
+                    <Weight className={currentLoad > maxLoad ? "text-red-500 mb-1" : "text-gray-400 mb-1"} size={20} />
+                    <span className="text-2xl font-black">{currentLoad} <span className="text-sm font-normal text-gray-400">/ {maxLoad}</span></span>
+                    <span className="text-[10px] font-bold uppercase opacity-60">Lbs Carried</span>
+                </div>
             )}
         </div>
 
-        {isAdding && (
-            <div className="p-3 bg-gray-50 border-b border-gray-100 grid grid-cols-1 sm:grid-cols-[1fr_auto_auto_auto] gap-2 items-center">
-                <input 
-                    placeholder="Item Name" 
-                    className="flex-1 bg-white border border-gray-200 rounded px-2 py-1 text-sm"
-                    value={newItem.name}
-                    onChange={e => setNewItem({...newItem, name: e.target.value})}
-                />
-                <input 
-                    type="number" placeholder="Qty" className="w-full sm:w-14 bg-white border border-gray-200 rounded px-2 py-1 text-sm text-center"
-                    value={newItem.quantity}
-                    onChange={e => setNewItem({...newItem, quantity: parseInt(e.target.value)})}
-                />
-                 <input 
-                    type="number" placeholder="Lbs" className="w-full sm:w-14 bg-white border border-gray-200 rounded px-2 py-1 text-sm text-center"
-                    value={newItem.weight}
-                    onChange={e => setNewItem({...newItem, weight: parseFloat(e.target.value)})}
-                />
-                <button 
-                    onClick={handleAddItem}
-                    className="bg-green-500 text-white p-1 rounded hover:bg-green-600"
-                >
-                    <Plus size={16} />
-                </button>
-            </div>
-        )}
+        {/* Item List */}
+        <div className="mt-5 md:mt-0 bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="bg-gray-50 px-4 py-3 border-b border-gray-100 flex justify-between items-center">
+              <h3 className="font-bold text-gray-700 flex items-center gap-2">
+                  <Backpack size={16} /> Inventory
+              </h3>
+              {!readOnly && (
+              <button 
+                  onClick={() => setIsAdding(!isAdding)}
+                  className="text-xs bg-gray-900 text-white px-2 py-1 rounded-md font-bold"
+              >
+                  {isAdding ? "Cancel" : "Add Item"}
+              </button>
+              )}
+          </div>
 
-        <div className="divide-y divide-gray-100">
-            {character.inventory.length === 0 && !isAdding && (
-                <div className="p-8 text-center text-gray-400 text-sm">Empty Backpack</div>
-            )}
-            {character.inventory.map(item => (
-                <div key={item.id} className="p-4 flex justify-between items-center gap-3 group">
-                    <div className="min-w-0">
-                        <div className="font-bold text-gray-800 text-sm truncate">{item.name}</div>
-                        <div className="text-xs text-gray-400 mt-0.5">
-                            {item.weight > 0 && `${item.weight} lbs`}
-                            {item.quantity > 1 && ` • x${item.quantity}`}
-                        </div>
-                    </div>
-                    {!readOnly && (
-                    <button 
-                        onClick={() => handleRemoveItem(item.id)}
-                        className="text-gray-300 hover:text-red-500 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all shrink-0"
-                    >
-                        <Trash2 size={16} />
-                    </button>
-                    )}
-                </div>
-            ))}
+          {isAdding && (
+              <div className="p-3 bg-gray-50 border-b border-gray-100 grid grid-cols-1 sm:grid-cols-[1fr_auto_auto_auto] gap-2 items-center">
+                  <input 
+                      placeholder="Item Name" 
+                      className="flex-1 bg-white border border-gray-200 rounded px-2 py-1 text-sm"
+                      value={newItem.name}
+                      onChange={e => setNewItem({...newItem, name: e.target.value})}
+                  />
+                  <input 
+                      type="number" placeholder="Qty" className="w-full sm:w-14 bg-white border border-gray-200 rounded px-2 py-1 text-sm text-center"
+                      value={newItem.quantity}
+                      onChange={e => setNewItem({...newItem, quantity: parseInt(e.target.value)})}
+                  />
+                   <input 
+                      type="number" placeholder="Lbs" className="w-full sm:w-14 bg-white border border-gray-200 rounded px-2 py-1 text-sm text-center"
+                      value={newItem.weight}
+                      onChange={e => setNewItem({...newItem, weight: parseFloat(e.target.value)})}
+                  />
+                  <button 
+                      onClick={handleAddItem}
+                      className="bg-green-500 text-white p-1 rounded hover:bg-green-600"
+                  >
+                      <Plus size={16} />
+                  </button>
+              </div>
+          )}
+
+          <div className="divide-y divide-gray-100">
+              {character.inventory.length === 0 && !isAdding && (
+                  <div className="p-8 text-center text-gray-400 text-sm">Empty Backpack</div>
+              )}
+              {character.inventory.map(item => (
+                  <div key={item.id} className="p-4 flex justify-between items-center gap-3 group">
+                      <div className="min-w-0">
+                          <div className="font-bold text-gray-800 text-sm truncate">{item.name}</div>
+                          <div className="text-xs text-gray-400 mt-0.5">
+                              {item.weight > 0 && `${item.weight} lbs`}
+                              {item.quantity > 1 && ` • x${item.quantity}`}
+                          </div>
+                      </div>
+                      {!readOnly && (
+                      <button 
+                          onClick={() => handleRemoveItem(item.id)}
+                          className="text-gray-300 hover:text-red-500 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all shrink-0"
+                      >
+                          <Trash2 size={16} />
+                      </button>
+                      )}
+                  </div>
+              ))}
+          </div>
         </div>
       </div>
     </div>
