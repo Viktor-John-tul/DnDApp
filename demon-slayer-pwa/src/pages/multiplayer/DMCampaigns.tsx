@@ -133,6 +133,9 @@ export function DMCampaigns() {
           {campaigns.map((campaign) => {
             const members = Object.values(campaign.members || {}).sort((a, b) => a.name.localeCompare(b.name));
             const isExpanded = expandedCampaignId === campaign.id;
+            const membersButtonClasses = isExpanded
+              ? "mt-4 w-full flex items-center justify-between px-3 py-2 rounded-xl border border-gray-900 text-sm font-bold text-white bg-gray-900"
+              : "mt-4 w-full flex items-center justify-between px-3 py-2 rounded-xl border border-gray-200 text-sm font-bold text-gray-600 hover:bg-gray-50";
 
             return (
             <div key={campaign.id} className="bg-white rounded-2xl p-4 border border-gray-200 shadow-sm">
@@ -181,7 +184,7 @@ export function DMCampaigns() {
 
               <button
                 onClick={() => toggleMembers(campaign.id)}
-                className="mt-4 w-full flex items-center justify-between px-3 py-2 rounded-xl border border-gray-200 text-sm font-bold text-gray-600 hover:bg-gray-50"
+                className={membersButtonClasses}
               >
                 <span className="flex items-center gap-2">
                   <Users size={16} /> Members ({members.length})
@@ -190,21 +193,47 @@ export function DMCampaigns() {
               </button>
 
               {isExpanded && (
-                <div className="mt-3 space-y-2">
+                <div className="mt-4 rounded-2xl border border-gray-200 bg-white/80 p-4 shadow-inner">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="text-xs font-bold uppercase tracking-widest text-gray-400">Joined Players</div>
+                    <div className="text-xs font-bold text-gray-500">{members.length} total</div>
+                  </div>
                   {members.length === 0 ? (
                     <div className="text-sm text-gray-400">No players joined yet.</div>
                   ) : (
-                    members.map((member) => (
-                      <div key={member.id} className="flex items-center justify-between rounded-xl border border-gray-200 bg-gray-50 px-3 py-2">
-                        <div className="text-sm font-semibold text-gray-800">{member.name}</div>
-                        <Link
-                          to={`/character/${member.id}`}
-                          className="text-xs font-bold text-slayer-orange hover:text-orange-600"
-                        >
-                          View Sheet
-                        </Link>
-                      </div>
-                    ))
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                      {members.map((member) => {
+                        const initial = member.name.trim().charAt(0).toUpperCase() || "?";
+
+                        return (
+                          <Link
+                            key={member.id}
+                            to={`/character/${member.id}`}
+                            className="group aspect-square rounded-2xl border border-gray-200 bg-gradient-to-br from-white to-orange-50 p-3 shadow-sm transition hover:-translate-y-0.5 hover:border-orange-200 hover:shadow-lg"
+                            aria-label={`Open ${member.name} sheet`}
+                          >
+                            <div className="flex h-full flex-col justify-between">
+                              <div className="flex items-center justify-between">
+                                <div className="h-10 w-10 rounded-xl bg-gray-900 text-white flex items-center justify-center text-lg font-black">
+                                  {initial}
+                                </div>
+                                <div className="text-[10px] font-bold uppercase tracking-widest text-gray-400 group-hover:text-slayer-orange">
+                                  Sheet
+                                </div>
+                              </div>
+                              <div>
+                                <div className="text-sm font-bold text-gray-800 line-clamp-2">
+                                  {member.name}
+                                </div>
+                                <div className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                                  View
+                                </div>
+                              </div>
+                            </div>
+                          </Link>
+                        );
+                      })}
+                    </div>
                   )}
                 </div>
               )}
