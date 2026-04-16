@@ -11,7 +11,7 @@ import {
   where
 } from "firebase/firestore";
 import { db } from "./firebase";
-import type { Campaign, CampaignMember, RPGCharacter } from "../types";
+import type { Campaign, CampaignMember, CampaignPrepItem, RPGCharacter } from "../types";
 
 const COLLECTION = "campaigns";
 
@@ -29,7 +29,8 @@ export const CampaignService = {
       inviteCode,
       createdAt,
       activeSessionCode: "",
-      members: {}
+      members: {},
+      prepItems: []
     });
 
     return {
@@ -39,7 +40,8 @@ export const CampaignService = {
       inviteCode,
       createdAt,
       activeSessionCode: "",
-      members: {}
+      members: {},
+      prepItems: []
     };
   },
 
@@ -100,6 +102,12 @@ export const CampaignService = {
   setActiveSessionCode: async (campaignId: string, sessionCode: string) => {
     await updateDoc(doc(db, COLLECTION, campaignId), {
       activeSessionCode: sessionCode
+    });
+  },
+
+  updatePrepItems: async (campaignId: string, prepItems: CampaignPrepItem[]) => {
+    await updateDoc(doc(db, COLLECTION, campaignId), {
+      prepItems
     });
   },
 
