@@ -13,6 +13,7 @@ import {
   deleteDoc
 } from "firebase/firestore";
 import type { RPGCharacter, CombatState } from "../types";
+import { getEffectiveMaxBreaths } from "./slayerProgression";
 
 export interface GameSession {
   code: string;
@@ -125,7 +126,7 @@ export const GameService = {
       currentHP: character.currentHP,
       maxHP: character.maxHP || character.currentHP,
       currentBreaths: character.currentBreaths,
-      maxBreaths: character.maxBreaths,
+      maxBreaths: getEffectiveMaxBreaths(character),
       level: character.level,
       photoUrl: character.photoUrl,
       initiative: character.customInitiative || 0
@@ -161,7 +162,7 @@ export const GameService = {
       currentHP: character.currentHP,
       maxHP: character.maxHP || character.currentHP,
       currentBreaths: character.currentBreaths,
-      maxBreaths: character.maxBreaths,
+      maxBreaths: getEffectiveMaxBreaths(character),
       level: character.level,
       photoUrl: character.photoUrl,
       initiative: character.customInitiative || 0

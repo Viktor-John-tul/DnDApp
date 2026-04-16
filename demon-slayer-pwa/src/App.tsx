@@ -9,6 +9,7 @@ import { CharacterCreation } from "./pages/CharacterCreation";
 import { DemonCreation } from "./pages/DemonCreation";
 import { CharacterSheet } from "./pages/CharacterSheet";
 import { DMView } from "./pages/multiplayer/DMView";
+import { DMCampaigns } from "./pages/multiplayer/DMCampaigns";
 
 function App() {
   return (
@@ -38,6 +39,12 @@ function App() {
           } />
           
           <Route path="/dm" element={
+            <ProtectedRoute>
+              <DMCampaigns />
+            </ProtectedRoute>
+          } />
+
+          <Route path="/dm/:campaignId" element={
             <ProtectedRoute>
               <DMView />
             </ProtectedRoute>

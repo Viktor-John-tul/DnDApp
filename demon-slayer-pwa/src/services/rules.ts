@@ -33,7 +33,7 @@ export const Calculator = {
         return Calculator.getCurrentLoad(inventory) > Calculator.getMaxLoad(str);
     },
 
-    getSpeed: (isEncumbered: boolean) => isEncumbered ? 15 : 30,
+    getSpeed: (isEncumbered: boolean, baseSpeed: number = 30) => isEncumbered ? 15 : baseSpeed,
 
     getSkillBonus: (
         skill: string, 

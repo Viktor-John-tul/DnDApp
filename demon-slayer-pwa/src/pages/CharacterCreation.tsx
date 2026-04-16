@@ -6,6 +6,7 @@ import { CharacterService } from "../services/characterService";
 import { StorageService } from "../services/storageService";
 import { StatStepper } from "../components/StatStepper";
 import { useToast } from "../context/ToastContext";
+import { getSlayerMaxBreaths } from "../services/slayerProgression";
 
 import type { RPGCharacter } from "../types";
 
@@ -91,10 +92,12 @@ export function CharacterCreation() {
       // Con Mod calculation for HP
       const conMod = Math.floor((stats.con - 10) / 2);
       const currentHP = (8 + conMod) * level;
+      const maxBreaths = getSlayerMaxBreaths(level);
 
       const newCharacter: Omit<RPGCharacter, 'id' | 'createdAt' | 'updatedAt'> = {
         userId: user.uid,
         name,
+        type: 'slayer',
         characterClass: rank, // Mapped from "Class" or "Rank" UI
         level,
         
@@ -112,8 +115,8 @@ export function CharacterCreation() {
         breathingStyleName,
         breathingForms: [], // Empty initially
         
-        currentBreaths: 100,
-        maxBreaths: 100,
+        currentBreaths: maxBreaths,
+        maxBreaths,
         currentOverdraftDC: 15,
 
         

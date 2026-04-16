@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../context/ToastContext";
 import { useConfirm } from "../../context/ConfirmContext";
 import { GameService } from "../../services/gameService";
+import { CampaignService } from "../../services/campaignService";
 import { CharacterService } from "../../services/characterService";
 import type { GameSession } from "../../services/gameService";
-import type { StatusEffect, InventoryItem } from "../../types";
+import type { Campaign, StatusEffect, InventoryItem } from "../../types";
 import { Copy, Users, Power, ArrowLeft, Sparkles, Backpack, FileText, Coins, X, Heart, Wind, Square, CheckSquare, Swords, Lock, Crosshair } from 'lucide-react';
 import { motion, AnimatePresence } from "framer-motion";
 import { CombatManager } from "../../components/CombatManager";
@@ -26,9 +27,12 @@ export function DMView() {
   const { confirm } = useConfirm();
   const { user } = useAuth();
   const navigate = useNavigate();
+    const { campaignId } = useParams();
+    const [campaign, setCampaign] = useState<Campaign | null>(null);
   const [sessionCode, setSessionCode] = useState<string | null>(null);
   const [session, setSession] = useState<GameSession | null>(null);
   const [loading, setLoading] = useState(true);
+    const [startingSession, setStartingSession] = useState(false);
 
   // DM Tools State
   const [selectedEffect, setSelectedEffect] = useState<string | null>(null);
@@ -48,45 +52,56 @@ export function DMView() {
   const [dmNoteBuffer, setDmNoteBuffer] = useState("");
   const [showNoteEditor, setShowNoteEditor] = useState(false);
 
-  // Initialize Game Session
-  useEffect(() => {
-    const initGame = async () => {
-      if (!user) return;
-      try {
-        // Try to resume an existing session first
-        const existingCode = await GameService.resumeSession(user.uid);
-        if (existingCode) {
-            setSessionCode(existingCode);
-        } else {
-            // Only create if none exists
-            const code = await GameService.createGame(user.uid);
-            setSessionCode(code);
-        }
-      } catch (err) {
-        console.error("Failed to create/resume game", err);
-      }
-    };
-    initGame();
-  }, [user]);
+    // Load Campaign
+    useEffect(() => {
+        if (!campaignId || !user) return;
+
+        const unsubscribe = CampaignService.subscribeToCampaign(campaignId, (data) => {
+            if (!data) {
+                showToast("Campaign not found", "error");
+                navigate("/dm");
+                return;
+            }
+
+            if (data.dmId !== user.uid) {
+                showToast("You do not have access to this campaign", "error");
+                navigate("/dm");
+                return;
+            }
+
+            setCampaign(data);
+            setSessionCode(data.activeSessionCode || null);
+        });
+
+        return () => unsubscribe();
+    }, [campaignId, navigate, showToast, user]);
 
   // Subscribe to Session
   useEffect(() => {
-    if (!sessionCode) return;
-    
-    const unsubscribe = GameService.subscribeToSession(sessionCode, (data) => {
-      if (!data) {
-          // Session was deleted remotely
-          setSessionCode(null);
-          setSession(null);
-          navigate("/"); // Go back to dashboard if session ends
-          return;
-      }
-      setSession(data);
-      setLoading(false);
-    });
+        if (!sessionCode) {
+            setSession(null);
+            setLoading(false);
+            return;
+        }
 
-    return () => unsubscribe();
-  }, [sessionCode, navigate]);
+        setLoading(true);
+        const unsubscribe = GameService.subscribeToSession(sessionCode, (data) => {
+            if (!data) {
+                // Session was deleted remotely
+                setSessionCode(null);
+                setSession(null);
+                setLoading(false);
+                if (campaignId) {
+                    CampaignService.setActiveSessionCode(campaignId, "");
+                }
+                return;
+            }
+            setSession(data);
+            setLoading(false);
+        });
+
+        return () => unsubscribe();
+    }, [campaignId, sessionCode]);
 
   const handleEndSession = async () => {
       if (!sessionCode) return;
@@ -101,12 +116,30 @@ export function DMView() {
       
       try {
           await GameService.endSession(sessionCode);
+                    if (campaignId) {
+                        await CampaignService.setActiveSessionCode(campaignId, "");
+                    }
           setSessionCode(null);
-          navigate("/");
+                    navigate("/dm");
       } catch (err) {
           console.error(err);
       }
   };
+
+    const handleStartSession = async () => {
+        if (!user || !campaignId) return;
+        setStartingSession(true);
+        try {
+            const code = await GameService.createGame(user.uid);
+            await CampaignService.setActiveSessionCode(campaignId, code);
+            setSessionCode(code);
+        } catch (error) {
+            console.error("Failed to start session", error);
+            showToast("Failed to start session", "error");
+        } finally {
+            setStartingSession(false);
+        }
+    };
 
   const handleApplyEffect = async () => {
       if (!selectedEffect || targetIds.size === 0) return;
@@ -346,28 +379,59 @@ export function DMView() {
       setTargetIds(newSet);
   };
 
-  if (loading || !sessionCode) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-gray-50">
-        <div className="text-center">
-            <div className="animate-spin w-8 h-8 border-4 border-slayer-orange border-t-transparent rounded-full mx-auto mb-4"></div>
-            <p className="text-gray-500 font-bold">Accessing Session...</p>
-        </div>
-      </div>
-    );
-  }
+    if (loading) {
+        return (
+            <div className="flex h-screen items-center justify-center bg-gray-50">
+                <div className="text-center">
+                        <div className="animate-spin w-8 h-8 border-4 border-slayer-orange border-t-transparent rounded-full mx-auto mb-4"></div>
+                        <p className="text-gray-500 font-bold">Accessing Session...</p>
+                </div>
+            </div>
+        );
+    }
+
+    if (!sessionCode) {
+        return (
+            <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4">
+                <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-xl border border-gray-200 text-center">
+                    <p className="text-gray-500 font-bold mb-2">No Active Session</p>
+                    <p className="text-gray-400 text-sm mb-5">
+                        {campaign?.name || "This campaign"} is idle.
+                    </p>
+                    <button
+                        onClick={handleStartSession}
+                        disabled={startingSession}
+                        className="w-full py-3 font-bold text-white bg-slayer-orange rounded-xl shadow-lg shadow-orange-200 disabled:opacity-60"
+                    >
+                        Start Session
+                    </button>
+                    <Link
+                        to="/dm"
+                        className="mt-3 inline-block text-sm font-bold text-gray-500"
+                    >
+                        Back to Campaigns
+                    </Link>
+                </div>
+            </div>
+        );
+    }
 
   const players = Object.values(session?.players || {});
 
   return (
     <div className="min-h-screen bg-gray-100 p-4 pb-24">
-       {/* Header / HUD */}
-       <div className="bg-gray-900 text-white p-4 rounded-xl shadow-lg mb-6 sticky top-2 z-10">
-          <div className="flex justify-between items-center mb-2">
-              <div className="flex items-center gap-2">
-                <Link to="/" className="text-gray-400 hover:text-white"><ArrowLeft size={20}/></Link>
-                <h1 className="font-bold text-lg">DM Overwatch</h1>
-              </div>
+            {/* Header / HUD */}
+            <div className="bg-gray-900 text-white p-4 rounded-xl shadow-lg mb-6 sticky top-2 z-10">
+                <div className="flex justify-between items-center mb-2">
+                    <div className="flex items-center gap-2">
+                        <Link to="/dm" className="text-gray-400 hover:text-white"><ArrowLeft size={20}/></Link>
+                        <div>
+                            <h1 className="font-bold text-lg leading-tight">DM Overwatch</h1>
+                            {campaign?.name && (
+                                <p className="text-xs text-gray-400">{campaign.name}</p>
+                            )}
+                        </div>
+                    </div>
               
               <button 
                 onClick={handleEndSession}

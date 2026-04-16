@@ -9,6 +9,7 @@ import { CombatActionEditorModal } from '../../components/CombatActionEditorModa
 import { AnimatePresence, motion } from 'framer-motion';
 import { useToast } from '../../context/ToastContext';
 import { GameService } from '../../services/gameService';
+import { getEffectiveMaxBreaths, getSlayerFormCost, isSlayerCharacter } from '../../services/slayerProgression';
 
 interface Props {
   character: RPGCharacter;
@@ -32,6 +33,7 @@ interface ActiveRollState {
   extraDice?: { count: number, face: number }[];
   pendingForm?: BreathingForm;
   pendingRefCost?: number;
+    consumeFlowState?: boolean;
 }
 
 export function CombatTab({ character, onUpdate, readOnly, isDM, session }: Props) {
@@ -44,6 +46,13 @@ export function CombatTab({ character, onUpdate, readOnly, isDM, session }: Prop
   // Action Economy State
   const [actionsUsed, setActionsUsed] = useState(0);
   const [bonusUsed, setBonusUsed] = useState(false);
+    const [freeFormUsedThisTurn, setFreeFormUsedThisTurn] = useState(false);
+    const [bladeMemoryUsedThisTurn, setBladeMemoryUsedThisTurn] = useState(false);
+    const [usedFormsThisCombat, setUsedFormsThisCombat] = useState<Set<string>>(new Set());
+    const [controlledBreathingUsed, setControlledBreathingUsed] = useState(false);
+    const [flowStateReady, setFlowStateReady] = useState(false);
+    // TODO: Reset controlledBreathingUsed on short/long rest when rest system exists.
+    // TODO: Add rest-based counters for Battle Reflex and Unbroken Spirit.
   
   const [pendingHitConfirmForm, setPendingHitConfirmForm] = useState<BreathingForm | null>(null);
   const [healingConfig, setHealingConfig] = useState<{
@@ -64,6 +73,14 @@ export function CombatTab({ character, onUpdate, readOnly, isDM, session }: Prop
   const isEncumbered = character.type === 'demon' ? false : currentLoad > maxLoad;
 
   const isDemon = character.type === 'demon';
+    const isSlayer = isSlayerCharacter(character);
+    const effectiveMaxBreaths = getEffectiveMaxBreaths(character);
+    const canUseForms = isDemon || (isSlayer && character.level >= 2);
+
+    // Combat & Action Economy Logic
+    const combat = session?.combat;
+    const isMyTurn = combat?.isActive && combat.participants[combat.currentTurnIndex]?.id === character.id;
+    const MAX_ACTIONS = isSlayer && character.level >= 12 ? 3 : 2;
 
   // Helper: Status Effects
   const removeEffect = (id: string) => {
@@ -82,7 +99,7 @@ export function CombatTab({ character, onUpdate, readOnly, isDM, session }: Prop
 
     // Bonus Action: Recover All Breaths + Reset Overdraft DC to 15
     onUpdate({ 
-        currentBreaths: character.maxBreaths,
+        currentBreaths: effectiveMaxBreaths,
         currentOverdraftDC: 15
     });
 
@@ -111,37 +128,51 @@ export function CombatTab({ character, onUpdate, readOnly, isDM, session }: Prop
       onUpdate({ breathingForms: newForms });
   };
 
-  const handleTechniqueRoll = (form: BreathingForm, calculatedCost?: number) => {
-    // Check action economy in combat
-    if (combat?.isActive && !canUseAction('main')) {
-      showToast("No actions remaining!", "error");
-      return;
-    }
+    const handleTechniqueRoll = (form: BreathingForm, formNumber: number) => {
+        if (isSlayer && character.level < 2) {
+            showToast("Breathing forms unlock at level 2.", "info");
+            return;
+        }
 
-    const cost = calculatedCost !== undefined ? calculatedCost : (form.spCost || 0);
-    const nextBreaths = character.currentBreaths - cost;
-    
-    // Check for Overdraft Condition
-    if (nextBreaths < 0 || character.currentBreaths < 0) {
-        // Trigger Overdraft Save first
-        setActiveRoll({
-            label: `Overdraft Save (DC ${character.currentOverdraftDC})`,
-            modifier: conMod + (character.proficientSavingThrows.includes("CON") ? proficiency : 0),
-            isSave: true,
-            pendingForm: form,
-            pendingRefCost: cost
-        } as any);
-        return;
-    }
+        // Check action economy in combat
+        if (combat?.isActive && !canUseAction('main')) {
+            showToast("No actions remaining!", "error");
+            return;
+        }
 
-    // Normal Execution
-    commitTechnique(form, cost);
+        const canFreeForm = isSlayer && character.level >= 2 && combat?.isActive && isMyTurn && !freeFormUsedThisTurn;
+        const canBladeMemory = isSlayer && character.level >= 12 && combat?.isActive && isMyTurn && !bladeMemoryUsedThisTurn;
+        const bladeMemoryApplies = canBladeMemory && usedFormsThisCombat.has(form.id);
+
+        const baseCost = isDemon ? (form.spCost || 0) : getSlayerFormCost(character.level, formNumber, bladeMemoryApplies && !canFreeForm);
+        const cost = canFreeForm ? 0 : baseCost;
+        const nextBreaths = character.currentBreaths - cost;
+
+        setUsedFormsThisCombat(prev => new Set(prev).add(form.id));
+        if (canFreeForm) setFreeFormUsedThisTurn(true);
+        if (bladeMemoryApplies && !canFreeForm) setBladeMemoryUsedThisTurn(true);
+
+        // Check for Overdraft Condition
+        if (nextBreaths < 0 || character.currentBreaths < 0) {
+                // Trigger Overdraft Save first
+                setActiveRoll({
+                        label: `Overdraft Save (DC ${character.currentOverdraftDC})`,
+                        modifier: conMod + (character.proficientSavingThrows.includes("CON") ? proficiency : 0),
+                        isSave: true,
+                        pendingForm: form,
+                        pendingRefCost: cost
+                } as any);
+                return;
+        }
+
+        // Normal Execution
+        commitTechnique(form, cost);
     
-    // Consume action in combat
-    if (combat?.isActive && isMyTurn) {
-      useAction('main');
-    }
-  };
+        // Consume action in combat
+        if (combat?.isActive && isMyTurn) {
+            useAction('main');
+        }
+    };
 
   const commitTechnique = (form: BreathingForm, cost: number) => {
     const newBreaths = character.currentBreaths - cost;
@@ -187,6 +218,8 @@ export function CombatTab({ character, onUpdate, readOnly, isDM, session }: Prop
           // Apply Active Buff if exists
           // Prevent Regen Buffs from incorrectly adding to damage dice
           const extraDice: { count: number, face: number }[] = [];
+          const flowStateApplies = isSlayer && character.level >= 6 && flowStateReady;
+          const breathingBeyondApplies = isSlayer && character.level >= 18 && effectiveMaxBreaths > 0 && character.currentBreaths <= effectiveMaxBreaths * 0.25;
           
           if (character.activeBuff?.activeBuffDiceCount && !character.activeBuff.isRegenBuff && (character.activeBuff.activeBuffRoundsRemaining || 0) > 0) {
               const buffCount = character.activeBuff.activeBuffDiceCount;
@@ -216,6 +249,14 @@ export function CombatTab({ character, onUpdate, readOnly, isDM, session }: Prop
                   }
               });
           }
+
+          if (flowStateApplies) {
+              extraDice.push({ count: 1, face: 4 });
+          }
+
+          if (breathingBeyondApplies) {
+              extraDice.push({ count: 1, face: 6 });
+          }
           
           setTimeout(() => {
               setActiveRoll({
@@ -225,7 +266,8 @@ export function CombatTab({ character, onUpdate, readOnly, isDM, session }: Prop
                 diceCount: count,
                 diceFace: face,
                 extraDice: extraDice,
-                pendingForm: form
+                pendingForm: form,
+                consumeFlowState: flowStateApplies
             });
           }, 300);
           return;
@@ -249,6 +291,9 @@ export function CombatTab({ character, onUpdate, readOnly, isDM, session }: Prop
           
           onUpdate(updates);
           showToast(`Buff Applied: ${form.name}!`, 'success');
+          if (isSlayer && character.level >= 6) {
+              setFlowStateReady(true);
+          }
           return;
       }
 
@@ -269,6 +314,9 @@ export function CombatTab({ character, onUpdate, readOnly, isDM, session }: Prop
               updates.activeBuffs = [...(character.activeBuffs || []), newBuff];
               onUpdate(updates);
               showToast(`Regeneration Applied: ${form.name}!`, 'success');
+              if (isSlayer && character.level >= 6) {
+                  setFlowStateReady(true);
+              }
               return;
           }
 
@@ -313,12 +361,10 @@ export function CombatTab({ character, onUpdate, readOnly, isDM, session }: Prop
         const passed = total >= character.currentOverdraftDC;
         const updates: Partial<RPGCharacter> = { ...baseUpdates };
 
+        const canIgnoreFail = isSlayer && character.level >= 4 && combat?.isActive && !controlledBreathingUsed;
+
         // 1. Apply Cost (always happens)
-        // We know pendingRefCost exists because we set it in handleTechniqueRoll, but TS might complain if we don't access via 'any' or verify.
-        // But since we defined ActiveRollState roughly, let's just cast carefully or rely on new type.
-        // Wait, I updated ActiveRollState but 'pendingRefCost' is NOT in it yet!
-        // I need to add pendingRefCost to ActiveRollState or cast effectively.
-        const pendingRefCost = (activeRoll as any).pendingRefCost; 
+        const pendingRefCost = activeRoll.pendingRefCost || 0;
 
         updates.currentBreaths = character.currentBreaths - pendingRefCost;
 
@@ -326,6 +372,34 @@ export function CombatTab({ character, onUpdate, readOnly, isDM, session }: Prop
         updates.currentOverdraftDC = character.currentOverdraftDC + 5;
 
         // 3. Damage if failed
+        if (!passed && canIgnoreFail) {
+             setControlledBreathingUsed(true);
+             showToast("Controlled Breathing: ignored failed overdraft damage.", "info");
+             onUpdate(updates);
+
+             setActiveRoll(null);
+
+             if (activeRoll.pendingForm) {
+                 const form = activeRoll.pendingForm;
+                 setTimeout(() => {
+                     const hasAdvantageBuff = character.activeBuff?.isAdvantageBuff && (character.activeBuff.activeBuffRoundsRemaining || 0) > 0;
+                     let rollMode: 'normal'|'advantage'|'disadvantage' = 'normal';
+                     if (isEncumbered && !hasAdvantageBuff) rollMode = 'disadvantage';
+                     else if (!isEncumbered && hasAdvantageBuff) rollMode = 'advantage';
+                     else if (isEncumbered && hasAdvantageBuff) rollMode = 'normal';
+
+                     setActiveRoll({
+                         label: `${form.name} (Attack)`,
+                         modifier: attackMod + proficiency,
+                         mode: rollMode,
+                         isAttack: true,
+                         pendingForm: form
+                     });
+                 }, 500);
+             }
+             return;
+        }
+
         if (!passed) {
              // Trigger Damage Roll Visual
              setTimeout(() => {
@@ -412,6 +486,9 @@ export function CombatTab({ character, onUpdate, readOnly, isDM, session }: Prop
         }
 
         onUpdate(updates);
+        if (isSlayer && character.level >= 6 && activeRoll.pendingForm && activeRoll.label !== "Regeneration") {
+            setFlowStateReady(true);
+        }
         setActiveRoll(null);
         return;
     }
@@ -458,6 +535,13 @@ export function CombatTab({ character, onUpdate, readOnly, isDM, session }: Prop
 
         // Standard Form Damage Logic (Just finish)
         if (Object.keys(baseUpdates).length > 0) onUpdate(baseUpdates);
+        // TODO: When target tracking exists, grant +10 current Breath for slayers at level 4+ on demon kills.
+        if (activeRoll.consumeFlowState) {
+            setFlowStateReady(false);
+        }
+        if (isSlayer && character.level >= 6 && activeRoll.pendingForm) {
+            setFlowStateReady(true);
+        }
         setActiveRoll(null);
         return;
     }
@@ -468,24 +552,30 @@ export function CombatTab({ character, onUpdate, readOnly, isDM, session }: Prop
 
   const getBreathColor = () => {
     if (character.currentBreaths < 0) return "bg-red-600 text-white"; // Overdraft
-    if (character.currentBreaths <= character.maxBreaths * 0.25) return "bg-yellow-500 text-white";
+        if (character.currentBreaths <= effectiveMaxBreaths * 0.25) return "bg-yellow-500 text-white";
     return "bg-cyan-500 text-white";
   };
 
   const overdraftDC = 10 + Math.abs(Math.min(0, character.currentBreaths));
-
-  // Combat & Action Economy Logic
-  const combat = session?.combat;
-  const isMyTurn = combat?.isActive && combat.participants[combat.currentTurnIndex]?.id === character.id;
-  const MAX_ACTIONS = 2;
 
   // Reset action economy when turn changes
   useEffect(() => {
     if (isMyTurn) {
       setActionsUsed(0);
       setBonusUsed(false);
+            setFreeFormUsedThisTurn(false);
+            setBladeMemoryUsedThisTurn(false);
     }
   }, [isMyTurn]);
+
+    useEffect(() => {
+        if (!combat?.isActive) {
+            setUsedFormsThisCombat(new Set());
+            setControlledBreathingUsed(false);
+            setFreeFormUsedThisTurn(false);
+            setBladeMemoryUsedThisTurn(false);
+        }
+    }, [combat?.isActive]);
 
   // Decrement buff timers when round changes in combat
   useEffect(() => {
@@ -699,7 +789,7 @@ export function CombatTab({ character, onUpdate, readOnly, isDM, session }: Prop
                     <span className={`text-4xl font-black ${character.currentBreaths < 0 ? 'text-red-600' : 'text-gray-800'}`}>
                         {character.currentBreaths}
                     </span>
-                    <span className="text-gray-400 font-medium">/ {character.maxBreaths}</span>
+                    <span className="text-gray-400 font-medium">/ {effectiveMaxBreaths}</span>
                 </div>
             </div>
         </div>
@@ -710,7 +800,7 @@ export function CombatTab({ character, onUpdate, readOnly, isDM, session }: Prop
                 className={`h-full rounded-full ${getBreathColor()}`}
                 initial={{ width: 0 }}
                 animate={{ 
-                    width: `${Math.min(100, Math.max(0, (character.currentBreaths / character.maxBreaths) * 100))}%` 
+                    width: `${Math.min(100, Math.max(0, (character.currentBreaths / effectiveMaxBreaths) * 100))}%` 
                 }}
             />
         </div>
@@ -738,7 +828,7 @@ export function CombatTab({ character, onUpdate, readOnly, isDM, session }: Prop
       <div className="space-y-3">
         <div className="flex justify-between items-center px-1">
             <h3 className="font-bold text-gray-800">{isDemon ? 'Blood Demon Arts' : 'Breathing Forms'}</h3>
-            {!readOnly && (
+            {!readOnly && canUseForms && (
             <button 
                 onClick={() => setEditingForm({
                     id: crypto.randomUUID(), 
@@ -757,6 +847,12 @@ export function CombatTab({ character, onUpdate, readOnly, isDM, session }: Prop
             </button>
             )}
         </div>
+
+        {!canUseForms && !isDemon && (
+            <div className="bg-gray-50 rounded-xl p-4 text-center text-gray-500 text-sm">
+                Breathing forms unlock at level 2.
+            </div>
+        )}
         
         {character.breathingForms.length === 0 ? (
             <div className="bg-gray-50 rounded-xl p-8 text-center text-gray-400">
@@ -766,7 +862,13 @@ export function CombatTab({ character, onUpdate, readOnly, isDM, session }: Prop
         ) : (
             character.breathingForms.map((form, index) => {
                 const formNumber = index + 1;
-                const cost = isDemon ? form.spCost : (formNumber * 3);
+                const canFreeForm = isSlayer && character.level >= 2 && combat?.isActive && isMyTurn && !freeFormUsedThisTurn;
+                const canBladeMemory = isSlayer && character.level >= 12 && combat?.isActive && isMyTurn && !bladeMemoryUsedThisTurn;
+                const bladeMemoryApplies = canBladeMemory && usedFormsThisCombat.has(form.id);
+                const baseCost = isDemon ? form.spCost : getSlayerFormCost(character.level, formNumber, bladeMemoryApplies && !canFreeForm);
+                const cost = canFreeForm ? 0 : baseCost;
+                const canEditForm = !readOnly && canUseForms && (!form.isLocked || isDM);
+                const canUseForm = !readOnly && canUseForms && (!form.isLocked || isDM);
                 // Prepend Ordinal if not Demon (e.g., "1st Form: ...")
                 // Only if name doesn't already start with it (simple heuristic)
                 const displayName = (!isDemon && !form.name.match(/^\d+.. Form/)) 
@@ -819,7 +921,7 @@ export function CombatTab({ character, onUpdate, readOnly, isDM, session }: Prop
                         </div>
                     )}
 
-                    <div className={`flex-1 ${!readOnly && (!form.isLocked || isDM) ? 'cursor-pointer' : ''}`} onClick={() => !readOnly && (!form.isLocked || isDM) && setEditingForm(form)}>
+                    <div className={`flex-1 ${canEditForm ? 'cursor-pointer' : ''}`} onClick={() => canEditForm && setEditingForm(form)}>
                         <div className="flex items-center gap-2 mb-1">
                             <h4 className="font-bold text-gray-800 flex items-center gap-2">
                                 {displayName}
@@ -835,12 +937,15 @@ export function CombatTab({ character, onUpdate, readOnly, isDM, session }: Prop
                     <div className="flex items-center gap-3 relative z-20">
                          <div className="text-center min-w-[30px]">
                             <span className="block text-[10px] text-gray-400 font-bold uppercase">Cost</span>
-                            <span className="block font-bold text-cyan-600">{cost}</span>
+                            <span className="block font-bold text-cyan-600">{cost === 0 ? 'FREE' : cost}</span>
+                            {bladeMemoryApplies && !canFreeForm && !isDemon && (
+                                <span className="block text-[9px] text-gray-400 font-bold uppercase">Blade</span>
+                            )}
                         </div>
                         <button 
-                            onClick={() => !readOnly && (!form.isLocked || isDM) && handleTechniqueRoll(form, cost)}
-                            disabled={readOnly || (form.isLocked && !isDM)}
-                            className={`p-2.5 rounded-xl shadow-lg transition-all ${readOnly || (form.isLocked && !isDM) ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-gray-900 text-white shadow-gray-200 active:scale-95'}`}
+                            onClick={() => canUseForm && handleTechniqueRoll(form, formNumber)}
+                            disabled={!canUseForm}
+                            className={`p-2.5 rounded-xl shadow-lg transition-all ${!canUseForm ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-gray-900 text-white shadow-gray-200 active:scale-95'}`}
                         >
                             <Swords size={18} />
                         </button>
@@ -1070,7 +1175,12 @@ export function CombatTab({ character, onUpdate, readOnly, isDM, session }: Prop
                 
                 <div className="grid grid-cols-2 gap-3">
                     <button 
-                        onClick={() => setPendingHitConfirmForm(null)}
+                        onClick={() => {
+                             setPendingHitConfirmForm(null);
+                             if (isSlayer && character.level >= 6) {
+                                 setFlowStateReady(true);
+                             }
+                        }}
                         className="py-3 px-4 rounded-xl border border-gray-200 font-bold text-gray-600 hover:bg-gray-50 active:bg-gray-100 transition-colors"
                     >
                         Miss

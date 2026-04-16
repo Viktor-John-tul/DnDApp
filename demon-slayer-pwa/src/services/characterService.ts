@@ -72,6 +72,7 @@ const MOCK_CHARACTER: RPGCharacter = {
   flaws: "Head is too hard",
   backstory: "Family killed by demons...",
   notes: "",
+  campaigns: [],
   createdAt: Date.now(),
   updatedAt: Date.now()
 };

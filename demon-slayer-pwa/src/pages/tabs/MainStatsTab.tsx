@@ -6,6 +6,7 @@ import { AttributeCard } from "../../components/AttributeCard";
 import { SkillRow } from "../../components/SkillRow";
 import { HealthPopup } from "../../components/HealthPopup";
 import { DiceRollerOverlay } from "../../components/DiceRollerOverlay";
+import { getSlayerBaseSpeed, isSlayerCharacter } from "../../services/slayerProgression";
 import type { RollMode } from "../../services/rules";
 
 const ALL_SKILLS = [
@@ -33,11 +34,15 @@ export function MainStatsTab({ character, onUpdate, readOnly }: Props) {
     } | null>(null);
 
   const isEncumbered = character.type === 'demon' ? false : Calculator.isEncumbered(character.strength, character.inventory);
+  const isSlayer = isSlayerCharacter(character);
   const proficiency = character.customProficiency ?? Calculator.getProficiencyBonus(character.level);
-  const ac = character.customAC ?? Calculator.getAC(character.dexterity);
-  const initiative = character.customInitiative ?? Calculator.getModifier(character.dexterity);
-  const speed = character.customSpeed ?? Calculator.getSpeed(isEncumbered);
   const maxHP = character.customMaxHP ?? Calculator.getMaxHP(character.constitution, character.level);
+  const baseAC = character.customAC ?? Calculator.getAC(character.dexterity);
+  const acBonus = isSlayer && character.level >= 14 && character.currentHP < maxHP * 0.5 ? 1 : 0;
+  const ac = baseAC + acBonus;
+  const initiative = character.customInitiative ?? Calculator.getModifier(character.dexterity);
+  const baseSpeed = isSlayer ? getSlayerBaseSpeed(character.level) : 30;
+  const speed = character.customSpeed ?? Calculator.getSpeed(isEncumbered, baseSpeed);
 
   // Handlers
   const handleRoll = (label: string, modifier: number, requiresDisadvantage = false) => {

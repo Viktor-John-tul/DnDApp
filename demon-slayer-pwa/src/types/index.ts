@@ -65,6 +65,29 @@ export interface CombatAction {
   type: ActionType;
 }
 
+export interface CampaignMembership {
+  id: string;
+  name: string;
+  joinedAt: number;
+}
+
+export interface CampaignMember {
+  id: string;
+  name: string;
+  userId: string;
+  joinedAt: number;
+}
+
+export interface Campaign {
+  id: string;
+  dmId: string;
+  name: string;
+  inviteCode: string;
+  createdAt: number;
+  activeSessionCode?: string;
+  members?: Record<string, CampaignMember>;
+}
+
 export interface BuffState {
   activeBuffFormID: string | null;
   activeBuffName: string | null;
@@ -155,6 +178,7 @@ export interface RPGCharacter {
   notes: string;
   dmNotes?: string;
   activeSessionCode?: string; // For persistent session connections
+  campaigns?: CampaignMembership[];
   
   // Timestamps
   createdAt: number; // Unix timestamp
