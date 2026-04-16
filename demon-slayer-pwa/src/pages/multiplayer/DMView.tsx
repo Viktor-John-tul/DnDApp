@@ -419,10 +419,10 @@ export function DMView() {
   const players = Object.values(session?.players || {});
 
   return (
-    <div className="min-h-screen bg-gray-100 p-4 pb-24">
+    <div className="min-h-screen bg-gray-100 p-3 sm:p-4 pb-24 md:pb-10">
             {/* Header / HUD */}
-            <div className="bg-gray-900 text-white p-4 rounded-xl shadow-lg mb-6 sticky top-2 z-10">
-                <div className="flex justify-between items-center mb-2">
+            <div className="bg-gray-900 text-white p-3 sm:p-4 rounded-xl shadow-lg mb-5 sm:mb-6 sticky top-2 z-10">
+                <div className="flex justify-between items-start sm:items-center gap-3 mb-2">
                     <div className="flex items-center gap-2">
                         <Link to="/dm" className="text-gray-400 hover:text-white"><ArrowLeft size={20}/></Link>
                         <div>
@@ -441,8 +441,8 @@ export function DMView() {
               </button>
           </div>
 
-          <div className="flex justify-between items-end">
-            <div className="flex items-center gap-2 bg-gray-800 px-3 py-1.5 rounded-lg border border-gray-700">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-3">
+                        <div className="flex items-center gap-2 bg-gray-800 px-3 py-1.5 rounded-lg border border-gray-700 w-full sm:w-auto overflow-hidden">
                   <span className="text-xs text-gray-400 uppercase tracking-widest">Join Code</span>
                   <span className="font-mono font-bold text-slayer-orange text-lg tracking-wider">{sessionCode}</span>
                   <button 
@@ -522,7 +522,7 @@ export function DMView() {
            </div>
 
            {/* Tool Content */}
-           <div className="p-6 bg-gray-50/50 min-h-[300px]">
+           <div className="p-4 sm:p-6 bg-gray-50/50 min-h-[300px]">
                <AnimatePresence mode="wait">
                    {activeTool === 'combat' && sessionCode && session && (
                        <motion.div 
@@ -687,7 +687,7 @@ export function DMView() {
                                 />
                                 <div>
                                     <label className="text-[10px] uppercase font-bold text-gray-400 mb-1 block">Action Type</label>
-                                    <div className="grid grid-cols-4 gap-2">
+                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                                         {(['main', 'bonus', 'reaction', 'free'] as const).map(type => (
                                             <button
                                                 key={type}
@@ -821,7 +821,7 @@ export function DMView() {
                     <textarea 
                         value={dmNoteBuffer}
                         onChange={e => setDmNoteBuffer(e.target.value)}
-                        className="w-full h-48 p-4 border border-gray-200 rounded-xl mb-4 text-sm bg-gray-50 focus:bg-white focus:ring-2 focus:ring-purple-100 outline-none transition-all resize-none"
+                        className="w-full h-44 sm:h-48 p-4 border border-gray-200 rounded-xl mb-4 text-sm bg-gray-50 focus:bg-white focus:ring-2 focus:ring-purple-100 outline-none transition-all resize-none"
                         placeholder="Private notes for/about this player..."
                     />
                     <div className="flex gap-3">
@@ -843,7 +843,7 @@ export function DMView() {
        )}
 
        {/* Players Grid */}
-       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+    <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {players.length === 0 ? (
               <div className="col-span-full py-12 text-center text-gray-400">
                   <p>Waiting for slayers to join...</p>

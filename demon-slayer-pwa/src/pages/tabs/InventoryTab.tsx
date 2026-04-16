@@ -78,10 +78,10 @@ export function InventoryTab({ character, onUpdate, readOnly }: Props) {
   const isDemon = character.type === 'demon';
 
   return (
-    <div className="space-y-6 pb-24">
+    <div className="space-y-5 sm:space-y-6 pb-24 md:pb-8">
       
       {/* Money & Load Header */}
-      <div className="grid grid-cols-2 gap-3">
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {isDemon ? (
              <div className="bg-red-950 rounded-xl p-4 border border-red-900 flex flex-col items-center justify-center relative overflow-hidden">
                 <div className="absolute top-0 right-0 p-1 opacity-20"><Skull size={40} /></div>
@@ -128,7 +128,7 @@ export function InventoryTab({ character, onUpdate, readOnly }: Props) {
         </div>
 
         {isAdding && (
-            <div className="p-3 bg-gray-50 border-b border-gray-100 flex gap-2 items-center">
+            <div className="p-3 bg-gray-50 border-b border-gray-100 grid grid-cols-1 sm:grid-cols-[1fr_auto_auto_auto] gap-2 items-center">
                 <input 
                     placeholder="Item Name" 
                     className="flex-1 bg-white border border-gray-200 rounded px-2 py-1 text-sm"
@@ -136,12 +136,12 @@ export function InventoryTab({ character, onUpdate, readOnly }: Props) {
                     onChange={e => setNewItem({...newItem, name: e.target.value})}
                 />
                 <input 
-                    type="number" placeholder="Qty" className="w-12 bg-white border border-gray-200 rounded px-1 py-1 text-sm text-center"
+                    type="number" placeholder="Qty" className="w-full sm:w-14 bg-white border border-gray-200 rounded px-2 py-1 text-sm text-center"
                     value={newItem.quantity}
                     onChange={e => setNewItem({...newItem, quantity: parseInt(e.target.value)})}
                 />
                  <input 
-                    type="number" placeholder="Lbs" className="w-12 bg-white border border-gray-200 rounded px-1 py-1 text-sm text-center"
+                    type="number" placeholder="Lbs" className="w-full sm:w-14 bg-white border border-gray-200 rounded px-2 py-1 text-sm text-center"
                     value={newItem.weight}
                     onChange={e => setNewItem({...newItem, weight: parseFloat(e.target.value)})}
                 />
@@ -159,9 +159,9 @@ export function InventoryTab({ character, onUpdate, readOnly }: Props) {
                 <div className="p-8 text-center text-gray-400 text-sm">Empty Backpack</div>
             )}
             {character.inventory.map(item => (
-                <div key={item.id} className="p-4 flex justify-between items-center group">
-                    <div>
-                        <div className="font-bold text-gray-800 text-sm">{item.name}</div>
+                <div key={item.id} className="p-4 flex justify-between items-center gap-3 group">
+                    <div className="min-w-0">
+                        <div className="font-bold text-gray-800 text-sm truncate">{item.name}</div>
                         <div className="text-xs text-gray-400 mt-0.5">
                             {item.weight > 0 && `${item.weight} lbs`}
                             {item.quantity > 1 && ` • x${item.quantity}`}
@@ -170,7 +170,7 @@ export function InventoryTab({ character, onUpdate, readOnly }: Props) {
                     {!readOnly && (
                     <button 
                         onClick={() => handleRemoveItem(item.id)}
-                        className="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
+                        className="text-gray-300 hover:text-red-500 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all shrink-0"
                     >
                         <Trash2 size={16} />
                     </button>

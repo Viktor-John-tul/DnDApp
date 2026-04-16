@@ -150,7 +150,7 @@ export function CombatManager({ session, sessionCode }: CombatManagerProps) {
 
   if (!combat) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-5 sm:space-y-6">
         <div className="text-center py-8">
           <Sword size={48} className="mx-auto text-gray-300 mb-4" />
           <h3 className="text-lg font-bold text-gray-700 mb-2">No Active Combat</h3>
@@ -165,18 +165,18 @@ export function CombatManager({ session, sessionCode }: CombatManagerProps) {
 
         {/* Connected Players */}
         {players.length > 0 && (
-          <div className="bg-white rounded-lg p-4 border border-gray-200">
+          <div className="bg-white rounded-lg p-3 sm:p-4 border border-gray-200">
             <h4 className="font-bold text-gray-700 mb-3">Connected Players ({players.length})</h4>
             <div className="space-y-2">
               {players.map(player => (
-                <div key={player.id} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
-                  <div className="flex items-center gap-2">
+                <div key={player.id} className="flex items-center justify-between gap-2 p-2 bg-gray-50 rounded-lg">
+                  <div className="flex items-center gap-2 min-w-0">
                     {player.photoUrl && (
                       <img src={player.photoUrl} alt={player.name} className="w-8 h-8 rounded-full object-cover" />
                     )}
-                    <div>
-                      <div className="font-bold text-sm">{player.name}</div>
-                      <div className="text-xs text-gray-500">Lv.{player.level} • {player.currentHP}/{player.maxHP} HP</div>
+                    <div className="min-w-0">
+                      <div className="font-bold text-sm truncate">{player.name}</div>
+                      <div className="text-xs text-gray-500 truncate">Lv.{player.level} • {player.currentHP}/{player.maxHP} HP</div>
                     </div>
                   </div>
                 </div>
@@ -186,7 +186,7 @@ export function CombatManager({ session, sessionCode }: CombatManagerProps) {
         )}
 
         {/* NPC Selection */}
-        <div className="bg-white rounded-lg p-4 border border-gray-200">
+        <div className="bg-white rounded-lg p-3 sm:p-4 border border-gray-200">
           <h4 className="font-bold text-gray-700 mb-3">Available NPCs</h4>
           {loadingNpcs ? (
             <div className="text-center py-4 text-gray-400">Loading NPCs...</div>
@@ -197,14 +197,14 @@ export function CombatManager({ session, sessionCode }: CombatManagerProps) {
           ) : (
             <div className="space-y-2">
               {npcs.map(npc => (
-                <div key={npc.id} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
-                  <div className="flex items-center gap-2">
+                <div key={npc.id} className="flex items-center justify-between gap-2 p-2 bg-gray-50 rounded-lg">
+                  <div className="flex items-center gap-2 min-w-0">
                     {npc.photoUrl && (
                       <img src={npc.photoUrl} alt={npc.name} className="w-8 h-8 rounded-full object-cover" />
                     )}
-                    <div>
-                      <div className="font-bold text-sm">{npc.name}</div>
-                      <div className="text-xs text-gray-500">{npc.characterClass} • Lv.{npc.level}</div>
+                    <div className="min-w-0">
+                      <div className="font-bold text-sm truncate">{npc.name}</div>
+                      <div className="text-xs text-gray-500 truncate">{npc.characterClass} • Lv.{npc.level}</div>
                     </div>
                   </div>
                   <button
@@ -229,7 +229,7 @@ export function CombatManager({ session, sessionCode }: CombatManagerProps) {
     const canStart = participantsWithInit.length === combat.participants.length && combat.participants.length > 0;
 
     return (
-      <div className="space-y-6">
+      <div className="space-y-5 sm:space-y-6">
         <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
           <div className="flex items-center gap-2 mb-2">
             <Zap size={20} className="text-orange-600" />
@@ -247,13 +247,13 @@ export function CombatManager({ session, sessionCode }: CombatManagerProps) {
             </div>
           ) : (
             combat.participants.map(participant => (
-              <div key={participant.id} className="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200">
-                <div className="flex items-center gap-3">
+              <div key={participant.id} className="flex items-center justify-between gap-2 p-3 bg-white rounded-lg border border-gray-200">
+                <div className="flex items-center gap-3 min-w-0">
                   {participant.photoUrl && (
                     <img src={participant.photoUrl} alt={participant.name} className="w-10 h-10 rounded-full object-cover" />
                   )}
-                  <div>
-                    <div className="font-bold">{participant.name}</div>
+                  <div className="min-w-0">
+                    <div className="font-bold truncate">{participant.name}</div>
                     <div className="text-xs text-gray-500">
                       {participant.type === 'player' ? 'Player' : 'NPC'}
                       {participant.isHidden && <span className="ml-2 text-purple-600">(Hidden)</span>}
@@ -287,17 +287,17 @@ export function CombatManager({ session, sessionCode }: CombatManagerProps) {
 
         {/* Add Players */}
         {players.filter(p => !combat.participants.some(cp => cp.id === p.id)).length > 0 && (
-          <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+          <div className="bg-blue-50 rounded-lg p-3 sm:p-4 border border-blue-200">
             <h4 className="font-bold text-blue-900 mb-3 text-sm">Add Connected Players</h4>
             <div className="space-y-2">
               {players.filter(p => !combat.participants.some(cp => cp.id === p.id)).map(player => (
-                <div key={player.id} className="flex items-center justify-between p-2 bg-white rounded-lg">
-                  <div className="flex items-center gap-2">
+                <div key={player.id} className="flex items-center justify-between gap-2 p-2 bg-white rounded-lg">
+                  <div className="flex items-center gap-2 min-w-0">
                     {player.photoUrl && (
                       <img src={player.photoUrl} alt={player.name} className="w-8 h-8 rounded-full object-cover" />
                     )}
-                    <div>
-                      <div className="font-bold text-sm">{player.name}</div>
+                    <div className="min-w-0">
+                      <div className="font-bold text-sm truncate">{player.name}</div>
                       <div className="text-xs text-gray-500">Lv.{player.level}</div>
                     </div>
                   </div>
@@ -315,18 +315,18 @@ export function CombatManager({ session, sessionCode }: CombatManagerProps) {
 
         {/* Add NPCs */}
         {npcs.length > 0 && (
-          <div className="bg-purple-50 rounded-lg p-4 border border-purple-200">
+          <div className="bg-purple-50 rounded-lg p-3 sm:p-4 border border-purple-200">
             <h4 className="font-bold text-purple-900 mb-3 text-sm">Add NPCs</h4>
             <div className="space-y-2">
               {npcs.filter(npc => !combat.participants.some(cp => cp.id === npc.id)).map(npc => (
-                <div key={npc.id} className="flex items-center justify-between p-2 bg-white rounded-lg">
-                  <div className="flex items-center gap-2">
+                <div key={npc.id} className="flex items-center justify-between gap-2 p-2 bg-white rounded-lg">
+                  <div className="flex items-center gap-2 min-w-0">
                     {npc.photoUrl && (
                       <img src={npc.photoUrl} alt={npc.name} className="w-8 h-8 rounded-full object-cover" />
                     )}
-                    <div>
-                      <div className="font-bold text-sm">{npc.name}</div>
-                      <div className="text-xs text-gray-500">{npc.characterClass} • Lv.{npc.level}</div>
+                    <div className="min-w-0">
+                      <div className="font-bold text-sm truncate">{npc.name}</div>
+                      <div className="text-xs text-gray-500 truncate">{npc.characterClass} • Lv.{npc.level}</div>
                     </div>
                   </div>
                   <button
@@ -357,10 +357,10 @@ export function CombatManager({ session, sessionCode }: CombatManagerProps) {
   const currentParticipant = combat.participants[combat.currentTurnIndex];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5 sm:space-y-6">
       {/* Combat HUD */}
-      <div className="bg-gradient-to-r from-red-600 to-orange-600 text-white rounded-lg p-4">
-        <div className="flex justify-between items-center">
+      <div className="bg-gradient-to-r from-red-600 to-orange-600 text-white rounded-lg p-3 sm:p-4">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-1 sm:gap-3">
           <div>
             <div className="text-xs uppercase tracking-wide opacity-80">Round {combat.round}</div>
             <div className="text-2xl font-bold">{currentParticipant?.name}'s Turn</div>
@@ -372,19 +372,19 @@ export function CombatManager({ session, sessionCode }: CombatManagerProps) {
       </div>
 
       {/* Turn Order */}
-      <div className="bg-white rounded-lg border border-gray-200 p-4">
+      <div className="bg-white rounded-lg border border-gray-200 p-3 sm:p-4">
         <h4 className="font-bold text-gray-700 mb-3 text-sm uppercase tracking-wide">Turn Order</h4>
         <div className="space-y-2">
           {combat.participants.map((participant, idx) => (
             <div
               key={participant.id}
-              className={`flex items-center justify-between p-2 rounded-lg transition ${
+              className={`flex items-center justify-between gap-2 p-2 rounded-lg transition ${
                 idx === combat.currentTurnIndex
                   ? 'bg-red-100 border-2 border-red-500'
                   : 'bg-gray-50 border border-gray-200'
               }`}
             >
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 min-w-0">
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
                   idx === combat.currentTurnIndex ? 'bg-red-600 text-white' : 'bg-gray-300 text-gray-600'
                 }`}>
@@ -393,8 +393,8 @@ export function CombatManager({ session, sessionCode }: CombatManagerProps) {
                 {participant.photoUrl && (
                   <img src={participant.photoUrl} alt={participant.name} className="w-8 h-8 rounded-full object-cover" />
                 )}
-                <div>
-                  <div className="font-bold text-sm">{participant.name}</div>
+                <div className="min-w-0">
+                  <div className="font-bold text-sm truncate">{participant.name}</div>
                   <div className="text-xs text-gray-500">Initiative: {participant.initiative}</div>
                 </div>
               </div>
@@ -407,7 +407,7 @@ export function CombatManager({ session, sessionCode }: CombatManagerProps) {
       </div>
 
       {/* Controls */}
-      <div className="flex gap-2">
+      <div className="flex flex-col sm:flex-row gap-2">
         <button
           onClick={handleNextTurn}
           className="flex-1 bg-gray-900 text-white py-3 rounded-lg font-bold hover:bg-gray-800 transition flex items-center justify-center gap-2"

@@ -22,8 +22,8 @@ export function BioTab({ character, onUpdate, readOnly }: Props) {
   };
 
   return (
-    <div className="space-y-6 pb-24">
-      <div className="flex justify-between items-center">
+        <div className="space-y-5 sm:space-y-6 pb-24 md:pb-8">
+            <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3">
         <h3 className="text-lg font-bold text-gray-800">Character Details</h3>
         {!readOnly && (
         <button 
@@ -38,7 +38,7 @@ export function BioTab({ character, onUpdate, readOnly }: Props) {
 
       <div className="space-y-4">
         <Section title="Appearance" icon={<User size={16} />}>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <Field label="Age" value={formData.age} onChange={v => handleChange('age', v)} editing={isEditing} />
                 <Field label="Height" value={formData.height} onChange={v => handleChange('height', v)} editing={isEditing} />
                 <Field label="Weight" value={formData.weight} onChange={v => handleChange('weight', v)} editing={isEditing} />

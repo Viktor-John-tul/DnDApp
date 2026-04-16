@@ -264,15 +264,15 @@ export function CharacterSheet() {
 
   if (!character) return null;
 
-  return (
-    <div className="bg-gray-50 h-[100dvh] flex flex-col max-w-md mx-auto shadow-2xl overflow-hidden relative">
+    return (
+        <div className="bg-gray-50 h-[100dvh] flex flex-col w-full max-w-5xl xl:max-w-6xl mx-auto shadow-2xl overflow-hidden relative">
         
         {character.currentHP <= 0 && (
             <DeathScreen character={character} onUpdate={handleUpdate} />
         )}
 
         {/* Header */}
-        <header className="bg-white border-b border-gray-100 px-4 py-3 flex items-center gap-3 sticky top-0 z-30 shadow-sm">
+        <header className="bg-white border-b border-gray-100 px-3 sm:px-4 py-3 flex items-center gap-3 sticky top-0 z-30 shadow-sm">
             <button 
                 onClick={() => navigate('/')}
                 className="p-1 -ml-2 rounded-full active:bg-gray-100 text-gray-500"
@@ -299,7 +299,7 @@ export function CharacterSheet() {
         </header>
 
         {/* Content Area */}
-        <main className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+        <main className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-5 custom-scrollbar">
             {activeTab === 'stats' && <MainStatsTab character={character} onUpdate={handleUpdate} readOnly={isReadOnly} />}
             {activeTab === 'combat' && <CombatTab character={character} onUpdate={handleUpdate} readOnly={isReadOnly} isDM={isDM} session={activeSession} />}
             {activeTab === 'inventory' && <InventoryTab character={character} onUpdate={handleUpdate} readOnly={isReadOnly} />}
@@ -307,7 +307,7 @@ export function CharacterSheet() {
         </main>
 
         {/* Bottom Navigation */}
-        <nav className="bg-white border-t border-gray-200 px-6 py-2 pb-6 flex justify-between items-center z-30 sticky bottom-0">
+        <nav className="bg-white border-t border-gray-200 px-2 sm:px-4 lg:px-6 py-2 pb-[calc(1.25rem+env(safe-area-inset-bottom))] sm:pb-6 flex justify-between items-center gap-1 sm:gap-2 z-30 sticky bottom-0">
             <TabButton 
                 active={activeTab === 'stats'} 
                 onClick={() => setActiveTab('stats')} 
@@ -335,8 +335,8 @@ export function CharacterSheet() {
         </nav>
 
                 {showJoinModal && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-                        <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl">
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm">
+                        <div className="bg-white rounded-2xl p-4 sm:p-6 w-full max-w-full sm:max-w-sm lg:max-w-md shadow-2xl">
                             <h3 className="font-bold text-lg mb-4">Campaigns</h3>
 
                             {character.activeSessionCode && (
@@ -354,7 +354,7 @@ export function CharacterSheet() {
                                 </div>
                             )}
 
-                            <div className="space-y-2 mb-5">
+                                <div className="space-y-2 mb-5 max-h-[45vh] overflow-y-auto pr-1">
                                 {campaignLoading ? (
                                     <div className="text-sm text-gray-400">Loading campaigns...</div>
                                 ) : joinedCampaigns.length === 0 ? (

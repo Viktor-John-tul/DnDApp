@@ -168,10 +168,10 @@ export function DiceRollerOverlay({ mode, modifier, label, onComplete, diceCount
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm" 
          onClick={stage === 'result' ? () => onComplete(finalResult?.total) : undefined}>
-      <motion.div 
+            <motion.div 
         initial={{ scale: 0.5, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        className="text-center w-full max-w-lg px-4"
+                className="text-center w-full max-w-lg px-3 sm:px-4"
       >
         <h3 className="text-white text-xl font-bold mb-8 uppercase tracking-widest">{label}</h3>
         
@@ -183,13 +183,13 @@ export function DiceRollerOverlay({ mode, modifier, label, onComplete, diceCount
                 const currentFace = diceConfig[idx] || 20;
                 
                 return (
-                    <div key={idx} className={`relative inline-flex items-center justify-center w-32 h-32 transition-all duration-500 ${dropped ? 'opacity-20 blur-[1px] saturate-0 scale-90' : 'scale-105'}`}>
+                    <div key={idx} className={`relative inline-flex items-center justify-center w-20 h-20 sm:w-24 sm:h-24 md:w-32 md:h-32 transition-all duration-500 ${dropped ? 'opacity-20 blur-[1px] saturate-0 scale-90' : 'scale-105'}`}>
                         <DiceIcon 
                             face={currentFace} 
                             className="absolute inset-0 w-full h-full text-slayer-orange opacity-20 animate-spin-slow"
                         />
                         <span 
-                            className={`relative text-4xl font-black ${
+                            className={`relative text-3xl sm:text-4xl font-black ${
                                 stage === 'result' 
                                 ? (finalResult?.isCrit && !dropped ? 'text-green-400' : (stage === 'result' && val === 1 && face === 20 && !dropped ? 'text-red-500' : 'text-white'))
                                 : 'text-white'
@@ -216,7 +216,7 @@ export function DiceRollerOverlay({ mode, modifier, label, onComplete, diceCount
           >
              <div className="flex flex-col items-center">
                  <p className="text-gray-400 text-sm uppercase tracking-wide mb-1">Total Result</p>
-                 <div className="text-6xl font-black text-white drop-shadow-[0_0_15px_rgba(255,255,255,0.5)]">
+                 <div className="text-5xl sm:text-6xl font-black text-white drop-shadow-[0_0_15px_rgba(255,255,255,0.5)]">
                      {finalResult.total}
                  </div>
                  
