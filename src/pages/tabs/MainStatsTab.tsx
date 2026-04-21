@@ -21,9 +21,10 @@ interface Props {
   character: RPGCharacter;
   onUpdate: (updates: Partial<RPGCharacter>) => void;
   readOnly?: boolean;
+  onRollLogged?: (purpose: string, notation: string, total: number) => void;
 }
 
-export function MainStatsTab({ character, onUpdate, readOnly }: Props) {
+export function MainStatsTab({ character, onUpdate, readOnly, onRollLogged }: Props) {
   const [showHealth, setShowHealth] = useState(false);
   const [activeRoll, setActiveRoll] = useState<{
         label: string; 
@@ -195,6 +196,17 @@ export function MainStatsTab({ character, onUpdate, readOnly }: Props) {
             diceCount={activeRoll.diceCount}
             diceFace={activeRoll.diceFace}
             onComplete={(total) => {
+             if (total !== undefined) {
+               const notation = activeRoll.diceCount && activeRoll.diceFace
+                ? `${activeRoll.diceCount}d${activeRoll.diceFace}`
+                : activeRoll.mode === "advantage"
+                  ? "2d20 (Advantage)"
+                  : activeRoll.mode === "disadvantage"
+                    ? "2d20 (Disadvantage)"
+                    : "1d20";
+               onRollLogged?.(activeRoll.label, notation, total);
+             }
+
                  if (total !== undefined && activeRoll.label === "Healing Surge") {
                      // Apply Healing Surge Result
                      const healAmount = Math.max(1, total + activeRoll.modifier);
