@@ -13,7 +13,6 @@ import { Shield, Swords, Backpack, Book, ChevronLeft, Loader2, Wifi } from "luci
 import { useAuth } from "../context/AuthContext";
 import { GameService } from "../services/gameService";
 import { useToast } from "../context/ToastContext";
-import { useLayoutMode } from "../context/LayoutModeContext";
 
 type TabId = 'stats' | 'combat' | 'inventory' | 'bio';
 
@@ -22,8 +21,6 @@ export function CharacterSheet() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { showToast } = useToast();
-    const layoutMode = useLayoutMode();
-    const isDesktopLayout = layoutMode === "desktop";
   
   const [character, setCharacter] = useState<RPGCharacter | null>(null);
   const [loading, setLoading] = useState(true);
@@ -268,15 +265,14 @@ export function CharacterSheet() {
   if (!character) return null;
 
     return (
-        <div className="min-h-[100dvh] bg-gradient-to-br from-gray-100 via-gray-50 to-orange-50/40 text-gray-900">
+        <div className="bg-gray-50 min-h-[100dvh] w-full flex flex-col overflow-hidden relative">
         
         {character.currentHP <= 0 && (
             <DeathScreen character={character} onUpdate={handleUpdate} />
         )}
 
         {/* Header */}
-        <header className="sticky top-0 z-30 border-b border-white/70 bg-white/90 backdrop-blur px-3 sm:px-4 lg:px-6 py-3 shadow-sm">
-            <div className={`mx-auto flex w-full ${isDesktopLayout ? "max-w-none" : "max-w-7xl"} items-center gap-3`}>
+        <header className="bg-white border-b border-gray-100 px-4 md:px-6 lg:px-8 py-3 flex items-center gap-3 sticky top-0 z-30 shadow-sm">
             <button 
                 onClick={() => navigate('/')}
                 className="p-1 -ml-2 rounded-full active:bg-gray-100 text-gray-500"
@@ -295,102 +291,56 @@ export function CharacterSheet() {
             {!isReadOnly && (
                 <button 
                     onClick={() => setShowJoinModal(true)}
-                    className={`ml-auto p-2 rounded-full ${character.activeSessionCode ? 'text-green-500 bg-green-50' : 'text-gray-400 hover:bg-gray-100'}`}
+                    className={`p-2 rounded-full ${character.activeSessionCode ? 'text-green-500 bg-green-50' : 'text-gray-400 hover:bg-gray-100'}`}
                 >
                     <Wifi size={20} />
                 </button>
             )}
-            </div>
         </header>
 
         {/* Content Area */}
-        <main className={`mx-auto w-full flex-1 custom-scrollbar ${isDesktopLayout ? "grid max-w-none grid-cols-[20rem_minmax(0,1fr)] gap-6 p-6 lg:grid-cols-[22rem_minmax(0,1fr)] lg:gap-8 lg:p-8" : "max-w-7xl p-3 sm:p-4"}`}>
-            <aside className={`${isDesktopLayout ? "flex" : "hidden"} flex-col gap-4 self-start sticky top-24`}>
-                <section className="rounded-3xl border border-white/70 bg-white/90 p-5 shadow-lg shadow-gray-200/40 backdrop-blur">
-                    <div className="flex items-center gap-4">
-                        <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-slayer-orange to-orange-500 text-white flex items-center justify-center shadow-lg shadow-orange-200">
-                            <Shield size={28} />
-                        </div>
-                        <div className="min-w-0">
-                            <div className="text-xs font-bold uppercase tracking-widest text-gray-400">Character</div>
-                            <h2 className="truncate text-xl font-black text-gray-900">{character.name}</h2>
-                            <p className="truncate text-sm text-gray-500">Lv.{character.level} {character.characterClass}</p>
-                        </div>
-                    </div>
-
-                    <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
-                        <div className="rounded-2xl bg-gray-50 p-3">
-                            <div className="text-[10px] font-bold uppercase tracking-widest text-gray-400">HP</div>
-                            <div className="mt-1 text-lg font-black">{character.currentHP}/{character.maxHP}</div>
-                        </div>
-                        <div className="rounded-2xl bg-gray-50 p-3">
-                            <div className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Session</div>
-                            <div className="mt-1 text-lg font-black">{character.activeSessionCode || 'Idle'}</div>
-                        </div>
-                    </div>
-                </section>
-
-                <section className="rounded-3xl border border-white/70 bg-white/90 p-3 shadow-lg shadow-gray-200/40 backdrop-blur">
-                    <div className="mb-3 px-2 text-[10px] font-bold uppercase tracking-[0.25em] text-gray-400">Tabs</div>
-                    <div className="flex flex-col gap-2">
-                        <DesktopTabButton active={activeTab === 'stats'} onClick={() => setActiveTab('stats')} icon={<Shield size={18} />} label="Stats" />
-                        <DesktopTabButton active={activeTab === 'combat'} onClick={() => setActiveTab('combat')} icon={<Swords size={18} />} label="Combat" />
-                        <DesktopTabButton active={activeTab === 'inventory'} onClick={() => setActiveTab('inventory')} icon={<Backpack size={18} />} label="Bag" />
-                        <DesktopTabButton active={activeTab === 'bio'} onClick={() => setActiveTab('bio')} icon={<Book size={18} />} label="Bio" />
-                    </div>
-                </section>
-            </aside>
-
-            <section className={`min-w-0 rounded-2xl border border-white/70 bg-white/95 shadow-xl shadow-gray-200/40 backdrop-blur overflow-hidden ${isDesktopLayout ? "rounded-none border-transparent bg-transparent shadow-none overflow-visible" : ""}`}>
-                <div className={`${isDesktopLayout ? "hidden" : "border-b border-gray-100 px-3 pt-2"}`}>
-                    <div className="grid grid-cols-4 gap-1 rounded-2xl bg-gray-100 p-1">
-                        <CompactTabButton active={activeTab === 'stats'} onClick={() => setActiveTab('stats')} icon={<Shield size={18} />} label="Stats" />
-                        <CompactTabButton active={activeTab === 'combat'} onClick={() => setActiveTab('combat')} icon={<Swords size={18} />} label="Combat" />
-                        <CompactTabButton active={activeTab === 'inventory'} onClick={() => setActiveTab('inventory')} icon={<Backpack size={18} />} label="Bag" />
-                        <CompactTabButton active={activeTab === 'bio'} onClick={() => setActiveTab('bio')} icon={<Book size={18} />} label="Bio" />
-                    </div>
-                </div>
-
-                <div className={`custom-scrollbar ${isDesktopLayout ? "overflow-visible p-0" : "overflow-y-auto p-3 sm:p-4"}`}>
-                    {activeTab === 'stats' && <MainStatsTab character={character} onUpdate={handleUpdate} readOnly={isReadOnly} />}
-                    {activeTab === 'combat' && <CombatTab character={character} onUpdate={handleUpdate} readOnly={isReadOnly} isDM={isDM} session={activeSession} />}
-                    {activeTab === 'inventory' && <InventoryTab character={character} onUpdate={handleUpdate} readOnly={isReadOnly} />}
-                    {activeTab === 'bio' && <BioTab character={character} onUpdate={handleUpdate} readOnly={isReadOnly} />}
-                </div>
-            </section>
+        <main className="flex-1 overflow-y-auto px-4 md:px-6 lg:px-8 py-4 md:py-5 lg:py-6 custom-scrollbar">
+            <div className="w-full max-w-screen-2xl mx-auto">
+                {activeTab === 'stats' && <MainStatsTab character={character} onUpdate={handleUpdate} readOnly={isReadOnly} />}
+                {activeTab === 'combat' && <CombatTab character={character} onUpdate={handleUpdate} readOnly={isReadOnly} isDM={isDM} session={activeSession} />}
+                {activeTab === 'inventory' && <InventoryTab character={character} onUpdate={handleUpdate} readOnly={isReadOnly} />}
+                {activeTab === 'bio' && <BioTab character={character} onUpdate={handleUpdate} readOnly={isReadOnly} />}
+            </div>
         </main>
 
         {/* Bottom Navigation */}
-        <nav className={`${isDesktopLayout ? "hidden" : "bg-white border-t border-gray-200 px-2 sm:px-4 py-2 pb-[calc(1.25rem+env(safe-area-inset-bottom))] sm:pb-6 flex justify-between items-center gap-1 sm:gap-2 z-30 sticky bottom-0"}`}>
-            <TabButton 
-                active={activeTab === 'stats'} 
-                onClick={() => setActiveTab('stats')} 
-                icon={<Shield size={24} />} 
-                label="Stats" 
-            />
-            <TabButton 
-                active={activeTab === 'combat'} 
-                onClick={() => setActiveTab('combat')} 
-                icon={<Swords size={24} />} 
-                label="Combat" 
-            />
-            <TabButton 
-                active={activeTab === 'inventory'} 
-                onClick={() => setActiveTab('inventory')} 
-                icon={<Backpack size={24} />} 
-                label="Bag" 
-            />
-            <TabButton 
-                active={activeTab === 'bio'} 
-                onClick={() => setActiveTab('bio')} 
-                icon={<Book size={24} />} 
-                label="Bio" 
-            />
+        <nav className="bg-white border-t border-gray-200 px-4 md:px-6 lg:px-8 py-2 pb-6 z-30 sticky bottom-0">
+            <div className="w-full max-w-screen-2xl mx-auto flex justify-between items-center">
+                <TabButton 
+                    active={activeTab === 'stats'} 
+                    onClick={() => setActiveTab('stats')} 
+                    icon={<Shield size={24} />} 
+                    label="Stats" 
+                />
+                <TabButton 
+                    active={activeTab === 'combat'} 
+                    onClick={() => setActiveTab('combat')} 
+                    icon={<Swords size={24} />} 
+                    label="Combat" 
+                />
+                <TabButton 
+                    active={activeTab === 'inventory'} 
+                    onClick={() => setActiveTab('inventory')} 
+                    icon={<Backpack size={24} />} 
+                    label="Bag" 
+                />
+                <TabButton 
+                    active={activeTab === 'bio'} 
+                    onClick={() => setActiveTab('bio')} 
+                    icon={<Book size={24} />} 
+                    label="Bio" 
+                />
+            </div>
         </nav>
 
                 {showJoinModal && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm">
-                        <div className="bg-white rounded-2xl p-4 sm:p-6 w-full max-w-full sm:max-w-sm lg:max-w-md shadow-2xl">
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                        <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl">
                             <h3 className="font-bold text-lg mb-4">Campaigns</h3>
 
                             {character.activeSessionCode && (
@@ -408,7 +358,7 @@ export function CharacterSheet() {
                                 </div>
                             )}
 
-                                <div className="space-y-2 mb-5 max-h-[45vh] overflow-y-auto pr-1">
+                            <div className="space-y-2 mb-5">
                                 {campaignLoading ? (
                                     <div className="text-sm text-gray-400">Loading campaigns...</div>
                                 ) : joinedCampaigns.length === 0 ? (
@@ -490,32 +440,6 @@ function TabButton({ active, onClick, icon, label }: any) {
                 {icon}
             </div>
             <span className="text-[10px] font-bold">{label}</span>
-        </button>
-    );
-}
-
-function DesktopTabButton({ active, onClick, icon, label }: any) {
-    return (
-        <button
-            onClick={onClick}
-            className={`flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left transition-all ${active ? 'bg-gray-900 text-white shadow-lg shadow-gray-200' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}
-        >
-            <div className={`rounded-xl p-2 ${active ? 'bg-white/10' : 'bg-white'}`}>
-                {icon}
-            </div>
-            <span className="text-sm font-bold">{label}</span>
-        </button>
-    );
-}
-
-function CompactTabButton({ active, onClick, icon, label }: any) {
-    return (
-        <button
-            onClick={onClick}
-            className={`flex flex-col items-center justify-center gap-1 rounded-xl px-2 py-2 text-xs font-bold transition-all ${active ? 'bg-white text-black shadow-sm' : 'text-gray-500'}`}
-        >
-            {icon}
-            <span>{label}</span>
         </button>
     );
 }

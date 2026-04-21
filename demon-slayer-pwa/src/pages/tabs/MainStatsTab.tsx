@@ -22,11 +22,8 @@ interface Props {
   onUpdate: (updates: Partial<RPGCharacter>) => void;
   readOnly?: boolean;
 }
-import { useLayoutMode } from "../../context/LayoutModeContext";
 
 export function MainStatsTab({ character, onUpdate, readOnly }: Props) {
-  const layoutMode = useLayoutMode();
-  const isDesktopLayout = layoutMode === "desktop";
   const [showHealth, setShowHealth] = useState(false);
   const [activeRoll, setActiveRoll] = useState<{
         label: string; 
@@ -86,9 +83,9 @@ export function MainStatsTab({ character, onUpdate, readOnly }: Props) {
   };
 
   return (
-    <div className="space-y-5 sm:space-y-6 pb-24 md:pb-8">
+    <div className="space-y-6 lg:space-y-8 pb-20">
       {/* Vitals Row */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 md:gap-3">
         <VitalCard icon={<Shield size={16}/>} label="AC" value={ac} color="text-blue-600" bg="bg-blue-50" />
         <VitalCard icon={<Zap size={16}/>} label="Init" value={initiative >= 0 ? `+${initiative}` : initiative} color="text-yellow-600" bg="bg-yellow-50" />
         <VitalCard icon={<PersonStanding size={16}/>} label="Speed" value={`${speed}ft`} color={isEncumbered ? "text-red-500" : "text-green-600"} bg={isEncumbered ? "bg-red-50" : "bg-green-50"} />
@@ -106,89 +103,73 @@ export function MainStatsTab({ character, onUpdate, readOnly }: Props) {
         ))}
       </div>
 
-      {!readOnly && (
-        <div className={isDesktopLayout ? "flex justify-end" : "hidden"}>
-          <button
-              onClick={() => setShowHealth(true)}
-              className="inline-flex items-center gap-3 rounded-2xl border border-red-100 bg-red-50 px-4 py-2 text-sm font-bold text-red-600 shadow-sm hover:bg-red-100"
-          >
-              <Heart size={18} fill="currentColor" />
-              Manage HP ({character.currentHP}/{maxHP})
-          </button>
-        </div>
-      )}
-
-        <div className="md:grid md:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] md:gap-6">
-        <div className="space-y-5 sm:space-y-6">
-          {/* Attributes Grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3">
-          <AttributeCard 
+      {/* Attributes Grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        <AttributeCard 
             title="STR" score={character.strength}
             onCheck={() => handleRoll("STR Check", Calculator.getModifier(character.strength))} 
             onSave={() => handleRoll("STR Save", Calculator.getModifier(character.strength) + (character.proficientSavingThrows.includes("STR") ? proficiency : 0))}
-          />
-          <AttributeCard 
+        />
+        <AttributeCard 
             title="DEX" score={character.dexterity}
             onCheck={() => handleRoll("DEX Check", Calculator.getModifier(character.dexterity), isEncumbered)} 
             onSave={() => handleRoll("DEX Save", Calculator.getModifier(character.dexterity) + (character.proficientSavingThrows.includes("DEX") ? proficiency : 0), isEncumbered)}
-          />
-          <AttributeCard 
+        />
+        <AttributeCard 
             title="CON" score={character.constitution}
             onCheck={() => handleRoll("CON Check", Calculator.getModifier(character.constitution))} 
             onSave={() => handleRoll("CON Save", Calculator.getModifier(character.constitution) + (character.proficientSavingThrows.includes("CON") ? proficiency : 0))}
-          />
-          <AttributeCard 
+        />
+        <AttributeCard 
             title="INT" score={character.intelligence}
             onCheck={() => handleRoll("INT Check", Calculator.getModifier(character.intelligence))} 
             onSave={() => handleRoll("INT Save", Calculator.getModifier(character.intelligence) + (character.proficientSavingThrows.includes("INT") ? proficiency : 0))}
-          />
-          <AttributeCard 
+        />
+        <AttributeCard 
             title="WIS" score={character.wisdom}
             onCheck={() => handleRoll("WIS Check", Calculator.getModifier(character.wisdom))} 
             onSave={() => handleRoll("WIS Save", Calculator.getModifier(character.wisdom) + (character.proficientSavingThrows.includes("WIS") ? proficiency : 0))}
-          />
-          <AttributeCard 
+        />
+        <AttributeCard 
             title="CHA" score={character.charisma}
             onCheck={() => handleRoll("CHA Check", Calculator.getModifier(character.charisma))} 
             onSave={() => handleRoll("CHA Save", Calculator.getModifier(character.charisma) + (character.proficientSavingThrows.includes("CHA") ? proficiency : 0))}
-          />
-          </div>
-        </div>
+        />
+      </div>
 
-        {/* Skills List */}
-        <div className="mt-6 md:mt-0 bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-          <div className="bg-gray-50 px-3 sm:px-4 py-3 border-b border-gray-100 flex justify-between items-center">
+      {/* Skills List */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+        <div className="bg-gray-50 px-4 py-3 border-b border-gray-100 flex justify-between items-center">
             <h3 className="font-bold text-gray-700">Skills</h3>
             <span className="text-xs text-gray-400 font-medium uppercase">Bonus</span>
-          </div>
-          <div className="divide-y divide-gray-100">
+        </div>
+        <div className="divide-y divide-gray-100">
             {ALL_SKILLS.map(skill => (
-              <SkillRow 
-                key={skill}
-                skill={skill}
-                stats={{str: character.strength, dex: character.dexterity, con: character.constitution, int: character.intelligence, wis: character.wisdom, cha: character.charisma}}
-                proficiencyBonus={proficiency}
-                isProficient={character.proficientSkills.includes(skill)}
-                isEncumbered={isEncumbered}
-                onRoll={() => handleRoll(
-                  skill.split("(")[0].trim(), 
-                  Calculator.getSkillBonus(skill, {str: character.strength, dex: character.dexterity, con: character.constitution, int: character.intelligence, wis: character.wisdom, cha: character.charisma}, proficiency, character.proficientSkills.includes(skill)),
-                  Calculator.hasEncumbranceDisadvantage(skill, isEncumbered)
-                )}
-              />
+                <SkillRow 
+                    key={skill}
+                    skill={skill}
+                    stats={{str: character.strength, dex: character.dexterity, con: character.constitution, int: character.intelligence, wis: character.wisdom, cha: character.charisma}}
+                    proficiencyBonus={proficiency}
+                    isProficient={character.proficientSkills.includes(skill)}
+                    isEncumbered={isEncumbered}
+                    onRoll={() => handleRoll(
+                        skill.split("(")[0].trim(), 
+                        Calculator.getSkillBonus(skill, {str: character.strength, dex: character.dexterity, con: character.constitution, int: character.intelligence, wis: character.wisdom, cha: character.charisma}, proficiency, character.proficientSkills.includes(skill)),
+                        Calculator.hasEncumbranceDisadvantage(skill, isEncumbered)
+                    )}
+                />
             ))}
-          </div>
         </div>
-        </div>
+      </div>
 
       {/* Floating Buttons: Health */}
       {!readOnly && (
-      <div className={isDesktopLayout ? "hidden" : "fixed bottom-24 right-2 sm:right-4 z-40"}>
+      <div className="fixed bottom-24 right-4 md:right-6 lg:right-8 z-40">
         <button 
             onClick={() => setShowHealth(true)}
-            className="flex flex-col items-center justify-center w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-red-500 text-white shadow-lg shadow-red-500/30 hover:scale-105 transition active:scale-95"
+            className="flex flex-col items-center justify-center w-16 h-16 rounded-full bg-red-500 text-white shadow-lg shadow-red-500/30 hover:scale-105 transition active:scale-95"
         >
-            <Heart size={20} fill="currentColor" className="sm:w-6 sm:h-6" />
+            <Heart size={24} fill="currentColor" />
             <span className="text-[10px] font-bold mt-0.5">{character.currentHP}/{maxHP}</span>
         </button>
       </div>
@@ -240,7 +221,7 @@ export function MainStatsTab({ character, onUpdate, readOnly }: Props) {
 // Sub-components
 function VitalCard({ icon, label, value, color, bg }: any) {
     return (
-    <div className={`flex flex-col items-center p-2 sm:p-3 rounded-xl ${bg} ${color}`}>
+        <div className={`flex flex-col items-center p-3 rounded-xl ${bg} ${color}`}>
             {icon}
             <span className="text-[10px] font-bold uppercase mt-1 opacity-70">{label}</span>
             <span className="text-lg font-black leading-none mt-1">{value}</span>
