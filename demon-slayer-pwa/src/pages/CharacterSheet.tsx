@@ -298,16 +298,51 @@ export function CharacterSheet() {
             )}
         </header>
 
-        {/* Content Area */}
-        <main className="flex-1 overflow-y-auto px-4 md:px-6 lg:px-8 py-4 md:py-5 lg:py-6 custom-scrollbar">
-            {activeTab === 'stats' && <MainStatsTab character={character} onUpdate={handleUpdate} readOnly={isReadOnly} />}
-            {activeTab === 'combat' && <CombatTab character={character} onUpdate={handleUpdate} readOnly={isReadOnly} isDM={isDM} session={activeSession} />}
-            {activeTab === 'inventory' && <InventoryTab character={character} onUpdate={handleUpdate} readOnly={isReadOnly} />}
-            {activeTab === 'bio' && <BioTab character={character} onUpdate={handleUpdate} readOnly={isReadOnly} />}
-        </main>
+        {/* Responsive Sheet Layout */}
+        <div className="flex-1 min-h-0 md:grid md:grid-cols-[220px_minmax(0,1fr)]">
+            {/* Tablet/Desktop Side Navigation */}
+            <aside className="hidden md:flex md:flex-col md:gap-2 bg-white border-r border-gray-200 p-3 lg:p-4">
+                <TabButton
+                    active={activeTab === 'stats'}
+                    onClick={() => setActiveTab('stats')}
+                    icon={<Shield size={20} />}
+                    label="Stats"
+                    desktop
+                />
+                <TabButton
+                    active={activeTab === 'combat'}
+                    onClick={() => setActiveTab('combat')}
+                    icon={<Swords size={20} />}
+                    label="Combat"
+                    desktop
+                />
+                <TabButton
+                    active={activeTab === 'inventory'}
+                    onClick={() => setActiveTab('inventory')}
+                    icon={<Backpack size={20} />}
+                    label="Inventory"
+                    desktop
+                />
+                <TabButton
+                    active={activeTab === 'bio'}
+                    onClick={() => setActiveTab('bio')}
+                    icon={<Book size={20} />}
+                    label="Bio"
+                    desktop
+                />
+            </aside>
 
-        {/* Bottom Navigation */}
-        <nav className="bg-white border-t border-gray-200 px-4 md:px-6 lg:px-8 py-2 pb-6 z-30 sticky bottom-0 flex justify-between items-center">
+            {/* Content Area */}
+            <main className="min-h-0 overflow-y-auto px-4 md:px-8 lg:px-12 py-4 md:py-6 lg:py-8 custom-scrollbar">
+                {activeTab === 'stats' && <MainStatsTab character={character} onUpdate={handleUpdate} readOnly={isReadOnly} />}
+                {activeTab === 'combat' && <CombatTab character={character} onUpdate={handleUpdate} readOnly={isReadOnly} isDM={isDM} session={activeSession} />}
+                {activeTab === 'inventory' && <InventoryTab character={character} onUpdate={handleUpdate} readOnly={isReadOnly} />}
+                {activeTab === 'bio' && <BioTab character={character} onUpdate={handleUpdate} readOnly={isReadOnly} />}
+            </main>
+        </div>
+
+        {/* Mobile Bottom Navigation */}
+        <nav className="md:hidden bg-white border-t border-gray-200 px-4 py-2 pb-6 z-30 sticky bottom-0 flex justify-between items-center">
             <TabButton 
                 active={activeTab === 'stats'} 
                 onClick={() => setActiveTab('stats')} 
@@ -426,16 +461,19 @@ export function CharacterSheet() {
   );
 }
 
-function TabButton({ active, onClick, icon, label }: any) {
+function TabButton({ active, onClick, icon, label, desktop = false }: any) {
     return (
         <button 
             onClick={onClick}
-            className={`flex flex-col items-center gap-1 transition-colors ${active ? 'text-black' : 'text-gray-300 hover:text-gray-500'}`}
+            className={desktop
+                ? `w-full flex items-center gap-3 px-3 py-2 rounded-xl border transition-colors ${active ? 'text-black bg-gray-100 border-gray-200' : 'text-gray-500 border-transparent hover:bg-gray-50 hover:text-gray-700'}`
+                : `flex flex-col items-center gap-1 transition-colors ${active ? 'text-black' : 'text-gray-300 hover:text-gray-500'}`
+            }
         >
             <div className={`p-1 rounded-xl transition-all ${active ? 'bg-gray-100' : 'bg-transparent'}`}>
                 {icon}
             </div>
-            <span className="text-[10px] font-bold">{label}</span>
+            <span className={desktop ? 'text-sm font-bold' : 'text-[10px] font-bold'}>{label}</span>
         </button>
     );
 }
