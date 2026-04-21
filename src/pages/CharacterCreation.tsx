@@ -7,7 +7,7 @@ import { StorageService } from "../services/storageService";
 import { StatStepper } from "../components/StatStepper";
 import { useToast } from "../context/ToastContext";
 import { getSlayerMaxBreaths } from "../services/slayerProgression";
-import { BASE_ATTRIBUTE_VALUES, getCreationPointBudget } from "../services/levelProgression";
+import { BASE_ATTRIBUTE_VALUES, getCreationPointBudget, getHealingSurgesAtLevel } from "../services/levelProgression";
 
 import type { RPGCharacter } from "../types";
 
@@ -140,7 +140,7 @@ export function CharacterCreation() {
         
         currentHP,
         maxHP: currentHP, // Initial max HP equals current
-        healingSurges: 3,
+        healingSurges: getHealingSurgesAtLevel(level),
         
         deathSaveSuccesses: 0,
         deathSaveFailures: 0,

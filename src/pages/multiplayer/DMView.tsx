@@ -12,7 +12,7 @@ import { Copy, Users, Power, ArrowLeft, Sparkles, Backpack, FileText, Coins, X, 
 import { motion, AnimatePresence } from "framer-motion";
 import { CombatManager } from "../../components/CombatManager";
 import { Calculator } from "../../services/rules";
-import { getAttributePointGainAtLevel } from "../../services/levelProgression";
+import { getAttributePointGainAtLevel, getHealingSurgesAtLevel } from "../../services/levelProgression";
 import { getSlayerMaxBreaths, isSlayerType } from "../../services/slayerProgression";
 
 const COMMON_EFFECTS = [
@@ -315,12 +315,14 @@ export function DMView() {
               const unspentPoints = (char.unspentLevelPoints || 0) + getAttributePointGainAtLevel(nextLevel, char.type);
               const maxHP = char.customMaxHP ?? Calculator.getMaxHP(char.constitution, nextLevel);
               const nextBreaths = isSlayerType(char.type) ? getSlayerMaxBreaths(nextLevel) : char.maxBreaths;
+              const nextSurges = isSlayerType(char.type) ? getHealingSurgesAtLevel(nextLevel) : char.healingSurges;
 
               const levelUpUpdates = {
                   level: nextLevel,
                   unspentLevelPoints: unspentPoints,
                   currentHP: maxHP,
                   maxHP,
+                  healingSurges: nextSurges,
                   currentBreaths: nextBreaths,
                   maxBreaths: nextBreaths
               };

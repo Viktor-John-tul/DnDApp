@@ -11,11 +11,13 @@ import { BioTab } from "./tabs/BioTab";
 import { RollsLogTab } from "./tabs/RollsLogTab";
 import { DeathScreen } from "../components/DeathScreen";
 import { LevelProgressionModal } from "../components/LevelProgressionModal";
-import { Shield, Swords, Backpack, Book, ChevronLeft, Loader2, Wifi, ScrollText, Dice6, X, Plus, Minus, ArrowUp } from "lucide-react";
+import { Shield, Swords, Backpack, Book, ChevronLeft, Loader2, Wifi, ScrollText, Dice6, X, Plus, Minus, ArrowUp, Heart } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { GameService } from "../services/gameService";
 import { useToast } from "../context/ToastContext";
 import { DiceRollerOverlay } from "../components/DiceRollerOverlay";
+import { HealthPopup } from "../components/HealthPopup";
+import { Calculator } from "../services/rules";
 
 type TabId = 'stats' | 'combat' | 'inventory' | 'bio' | 'logs';
 
@@ -41,6 +43,13 @@ export function CharacterSheet() {
         const [activeFreeRoll, setActiveFreeRoll] = useState<{ label: string; count: number; face: number } | null>(null);
           const [showLevelModal, setShowLevelModal] = useState(false);
           const [levelModalMode, setLevelModalMode] = useState<"preview" | "level-up">("preview");
+                    const [showHealth, setShowHealth] = useState(false);
+                    const [activeHealthRoll, setActiveHealthRoll] = useState<{
+                            label: string;
+                            modifier: number;
+                            diceCount: number;
+                            diceFace: number;
+                    } | null>(null);
   
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prevCharacterRef = useRef<RPGCharacter | null>(null);
@@ -303,6 +312,19 @@ export function CharacterSheet() {
 
   if (!character) return null;
 
+  const maxHP = character.customMaxHP ?? Calculator.getMaxHP(character.constitution, character.level);
+
+  const handleHealthSurge = () => {
+      if (isReadOnly || character.healingSurges <= 0) return;
+      setActiveHealthRoll({
+          label: "Healing Surge",
+          modifier: Calculator.getModifier(character.constitution),
+          diceCount: 1,
+          diceFace: 10,
+      });
+      setShowHealth(false);
+  };
+
     return (
         <div className="bg-gray-50 min-h-[100dvh] w-full flex flex-col overflow-hidden relative">
         
@@ -423,6 +445,18 @@ export function CharacterSheet() {
         </nav>
 
         {!isReadOnly && (
+            <div className="fixed bottom-24 right-4 md:right-8 z-40">
+                <button
+                    onClick={() => setShowHealth(true)}
+                    className="flex flex-col items-center justify-center w-16 h-16 rounded-full bg-red-500 text-white shadow-lg shadow-red-500/30 hover:scale-105 transition active:scale-95"
+                >
+                    <Heart size={24} fill="currentColor" />
+                    <span className="text-[10px] font-bold mt-0.5">{character.currentHP}/{maxHP}</span>
+                </button>
+            </div>
+        )}
+
+        {!isReadOnly && (
             <div className="fixed bottom-64 right-4 md:right-8 z-40">
                 <button
                     onClick={() => {
@@ -447,6 +481,17 @@ export function CharacterSheet() {
                     <span className="text-[10px] font-bold mt-0.5">Roll</span>
                 </button>
             </div>
+        )}
+
+        {showHealth && (
+            <HealthPopup
+                currentHP={character.currentHP}
+                maxHP={maxHP}
+                healingSurges={character.healingSurges}
+                onUpdateHP={(hp) => handleUpdate({ currentHP: hp })}
+                onUseSurge={handleHealthSurge}
+                onClose={() => setShowHealth(false)}
+            />
         )}
 
         {showFreeRollModal && (
@@ -547,6 +592,28 @@ export function CharacterSheet() {
                         appendRollLog(activeFreeRoll.label, `${activeFreeRoll.count}d${activeFreeRoll.face}`, total);
                     }
                     setActiveFreeRoll(null);
+                }}
+            />
+        )}
+
+        {activeHealthRoll && (
+            <DiceRollerOverlay
+                mode="normal"
+                modifier={activeHealthRoll.modifier}
+                label={activeHealthRoll.label}
+                diceCount={activeHealthRoll.diceCount}
+                diceFace={activeHealthRoll.diceFace}
+                onComplete={(total) => {
+                    if (total !== undefined) {
+                        appendRollLog(activeHealthRoll.label, `${activeHealthRoll.diceCount}d${activeHealthRoll.diceFace}`, total);
+                        const healAmount = Math.max(1, total + activeHealthRoll.modifier);
+                        const newHP = Math.min(maxHP, character.currentHP + healAmount);
+                        handleUpdate({
+                            healingSurges: Math.max(0, character.healingSurges - 1),
+                            currentHP: newHP,
+                        });
+                    }
+                    setActiveHealthRoll(null);
                 }}
             />
         )}

@@ -54,6 +54,12 @@ export function getCreationPointBudget(level: number, characterType?: CharacterT
   return getTotalAttributePointsAtLevel(level, characterType);
 }
 
+export function getHealingSurgesAtLevel(level: number) {
+  const safeLevel = Math.max(1, level);
+  if (safeLevel <= 3) return 3;
+  return 3 + (safeLevel - 3);
+}
+
 function getLevelTitle(level: number) {
   if (level === 1) return "Starting Journey";
   if (level === 20) return "Peak Power";

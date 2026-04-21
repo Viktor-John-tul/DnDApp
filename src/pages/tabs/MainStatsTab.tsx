@@ -1,10 +1,9 @@
 import { useState } from "react";
-import { Shield, Zap, Wind, PersonStanding, Star, Heart } from "lucide-react";
+import { Shield, Zap, Wind, PersonStanding, Star } from "lucide-react";
 import type { RPGCharacter } from "../../types";
 import { Calculator } from "../../services/rules";
 import { AttributeCard } from "../../components/AttributeCard";
 import { SkillRow } from "../../components/SkillRow";
-import { HealthPopup } from "../../components/HealthPopup";
 import { DiceRollerOverlay } from "../../components/DiceRollerOverlay";
 import { getSlayerBaseSpeed, isSlayerCharacter } from "../../services/slayerProgression";
 import type { RollMode } from "../../services/rules";
@@ -25,7 +24,6 @@ interface Props {
 }
 
 export function MainStatsTab({ character, onUpdate, readOnly, onRollLogged }: Props) {
-  const [showHealth, setShowHealth] = useState(false);
   const [activeRoll, setActiveRoll] = useState<{
         label: string; 
         modifier: number; 
@@ -65,22 +63,6 @@ export function MainStatsTab({ character, onUpdate, readOnly, onRollLogged }: Pr
       modifier,
       mode
     });
-  };
-
-  const handleSurge = () => {
-    if (readOnly || character.healingSurges <= 0) return;
-    
-    // Configure Roll for D10 + CON Mod
-    setActiveRoll({
-        label: "Healing Surge",
-        modifier: Calculator.getModifier(character.constitution),
-        mode: 'normal',
-        diceCount: 1,
-        diceFace: 10
-    });
-    
-    // We update stats via callback after roll completes
-    setShowHealth(false);
   };
 
   return (
@@ -163,31 +145,6 @@ export function MainStatsTab({ character, onUpdate, readOnly, onRollLogged }: Pr
         </div>
       </div>
 
-      {/* Floating Buttons: Health */}
-      {!readOnly && (
-      <div className="fixed bottom-24 right-4 md:right-6 lg:right-8 z-40">
-        <button 
-            onClick={() => setShowHealth(true)}
-            className="flex flex-col items-center justify-center w-16 h-16 rounded-full bg-red-500 text-white shadow-lg shadow-red-500/30 hover:scale-105 transition active:scale-95"
-        >
-            <Heart size={24} fill="currentColor" />
-            <span className="text-[10px] font-bold mt-0.5">{character.currentHP}/{maxHP}</span>
-        </button>
-      </div>
-      )}
-
-      {/* Modals */}
-      {showHealth && (
-        <HealthPopup 
-            currentHP={character.currentHP} 
-            maxHP={maxHP} 
-            healingSurges={character.healingSurges} 
-            onUpdateHP={(hp) => onUpdate({ currentHP: hp })}
-            onUseSurge={handleSurge}
-            onClose={() => setShowHealth(false)}
-        />
-      )}
-
       {activeRoll && (
         <DiceRollerOverlay 
             mode={activeRoll.mode} 
@@ -206,16 +163,6 @@ export function MainStatsTab({ character, onUpdate, readOnly, onRollLogged }: Pr
                     : "1d20";
                onRollLogged?.(activeRoll.label, notation, total);
              }
-
-                 if (total !== undefined && activeRoll.label === "Healing Surge") {
-                     // Apply Healing Surge Result
-                     const healAmount = Math.max(1, total + activeRoll.modifier);
-                     const newHP = Math.min(maxHP, character.currentHP + healAmount);
-                     onUpdate({
-                        healingSurges: character.healingSurges - 1,
-                        currentHP: newHP
-                     });
-                 }
 
                  // Consume One-Time Effects
                  const hasOneTime = character.statusEffects?.some(e => e.type === 'advantage' || e.type === 'disadvantage');
