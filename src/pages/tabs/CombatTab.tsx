@@ -17,6 +17,7 @@ interface Props {
   readOnly?: boolean;
   isDM?: boolean;
   session?: GameSession | null;
+    onRollLogged?: (purpose: string, notation: string, total: number) => void;
 }
 
 interface ActiveRollState {
@@ -36,7 +37,7 @@ interface ActiveRollState {
     consumeFlowState?: boolean;
 }
 
-export function CombatTab({ character, onUpdate, readOnly, isDM, session }: Props) {
+export function CombatTab({ character, onUpdate, readOnly, isDM, session, onRollLogged }: Props) {
   const { showToast } = useToast();
   const [activeRoll, setActiveRoll] = useState<ActiveRollState | null>(null);
   const [showOverdraftWarning] = useState(false);
@@ -341,6 +342,17 @@ export function CombatTab({ character, onUpdate, readOnly, isDM, session }: Prop
 
   const handleRollComplete = (total?: number) => {
     if (total === undefined) return; // Should not happen in result state
+
+        if (activeRoll) {
+            const notation = activeRoll.diceCount && activeRoll.diceFace
+                ? `${activeRoll.diceCount}d${activeRoll.diceFace}`
+                : activeRoll.mode === 'advantage'
+                    ? '2d20 (Advantage)'
+                    : activeRoll.mode === 'disadvantage'
+                        ? '2d20 (Disadvantage)'
+                        : '1d20';
+            onRollLogged?.(activeRoll.label, notation, total);
+        }
 
     let baseUpdates: Partial<RPGCharacter> = {};
     

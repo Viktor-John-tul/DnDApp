@@ -12,4 +12,81 @@
   body {
     @apply bg-gray-100 text-gray-900;
   }
+
+  html.dark body {
+    @apply bg-gray-950 text-gray-100;
+    color-scheme: dark;
+  }
+
+  body {
+    @apply transition-colors duration-300;
+  }
+}
+
+@layer utilities {
+  .dark .bg-white {
+    background-color: #111827 !important;
+  }
+
+  .dark .bg-gray-50 {
+    background-color: #111827 !important;
+  }
+
+  .dark .bg-gray-100 {
+    background-color: #1f2937 !important;
+  }
+
+  .dark .bg-gray-200 {
+    background-color: #374151 !important;
+  }
+
+  .dark .text-gray-900 {
+    color: #f3f4f6 !important;
+  }
+
+  .dark .text-gray-800 {
+    color: #f3f4f6 !important;
+  }
+
+  .dark .text-gray-700 {
+    color: #e5e7eb !important;
+  }
+
+  .dark .text-gray-600 {
+    color: #d1d5db !important;
+  }
+
+  .dark .text-gray-500,
+  .dark .text-gray-400,
+  .dark .text-gray-300 {
+    color: #9ca3af !important;
+  }
+
+  .dark .border-gray-50,
+  .dark .border-gray-100,
+  .dark .border-gray-200,
+  .dark .border-gray-300 {
+    border-color: #374151 !important;
+  }
+
+  .dark .shadow-sm,
+  .dark .shadow,
+  .dark .shadow-lg,
+  .dark .shadow-xl,
+  .dark .shadow-2xl {
+    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.35), 0 4px 20px -4px rgb(0 0 0 / 0.45) !important;
+  }
+
+  .dark input,
+  .dark textarea,
+  .dark select {
+    background-color: #1f2937;
+    color: #f3f4f6;
+    border-color: #374151;
+  }
+
+  .dark input::placeholder,
+  .dark textarea::placeholder {
+    color: #6b7280;
+  }
 }
