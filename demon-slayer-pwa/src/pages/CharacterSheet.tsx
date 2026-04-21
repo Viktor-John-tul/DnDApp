@@ -300,42 +300,38 @@ export function CharacterSheet() {
 
         {/* Content Area */}
         <main className="flex-1 overflow-y-auto px-4 md:px-6 lg:px-8 py-4 md:py-5 lg:py-6 custom-scrollbar">
-            <div className="w-full max-w-screen-2xl mx-auto">
-                {activeTab === 'stats' && <MainStatsTab character={character} onUpdate={handleUpdate} readOnly={isReadOnly} />}
-                {activeTab === 'combat' && <CombatTab character={character} onUpdate={handleUpdate} readOnly={isReadOnly} isDM={isDM} session={activeSession} />}
-                {activeTab === 'inventory' && <InventoryTab character={character} onUpdate={handleUpdate} readOnly={isReadOnly} />}
-                {activeTab === 'bio' && <BioTab character={character} onUpdate={handleUpdate} readOnly={isReadOnly} />}
-            </div>
+            {activeTab === 'stats' && <MainStatsTab character={character} onUpdate={handleUpdate} readOnly={isReadOnly} />}
+            {activeTab === 'combat' && <CombatTab character={character} onUpdate={handleUpdate} readOnly={isReadOnly} isDM={isDM} session={activeSession} />}
+            {activeTab === 'inventory' && <InventoryTab character={character} onUpdate={handleUpdate} readOnly={isReadOnly} />}
+            {activeTab === 'bio' && <BioTab character={character} onUpdate={handleUpdate} readOnly={isReadOnly} />}
         </main>
 
         {/* Bottom Navigation */}
-        <nav className="bg-white border-t border-gray-200 px-4 md:px-6 lg:px-8 py-2 pb-6 z-30 sticky bottom-0">
-            <div className="w-full max-w-screen-2xl mx-auto flex justify-between items-center">
-                <TabButton 
-                    active={activeTab === 'stats'} 
-                    onClick={() => setActiveTab('stats')} 
-                    icon={<Shield size={24} />} 
-                    label="Stats" 
-                />
-                <TabButton 
-                    active={activeTab === 'combat'} 
-                    onClick={() => setActiveTab('combat')} 
-                    icon={<Swords size={24} />} 
-                    label="Combat" 
-                />
-                <TabButton 
-                    active={activeTab === 'inventory'} 
-                    onClick={() => setActiveTab('inventory')} 
-                    icon={<Backpack size={24} />} 
-                    label="Bag" 
-                />
-                <TabButton 
-                    active={activeTab === 'bio'} 
-                    onClick={() => setActiveTab('bio')} 
-                    icon={<Book size={24} />} 
-                    label="Bio" 
-                />
-            </div>
+        <nav className="bg-white border-t border-gray-200 px-4 md:px-6 lg:px-8 py-2 pb-6 z-30 sticky bottom-0 flex justify-between items-center">
+            <TabButton 
+                active={activeTab === 'stats'} 
+                onClick={() => setActiveTab('stats')} 
+                icon={<Shield size={24} />} 
+                label="Stats" 
+            />
+            <TabButton 
+                active={activeTab === 'combat'} 
+                onClick={() => setActiveTab('combat')} 
+                icon={<Swords size={24} />} 
+                label="Combat" 
+            />
+            <TabButton 
+                active={activeTab === 'inventory'} 
+                onClick={() => setActiveTab('inventory')} 
+                icon={<Backpack size={24} />} 
+                label="Bag" 
+            />
+            <TabButton 
+                active={activeTab === 'bio'} 
+                onClick={() => setActiveTab('bio')} 
+                icon={<Book size={24} />} 
+                label="Bio" 
+            />
         </nav>
 
                 {showJoinModal && (
