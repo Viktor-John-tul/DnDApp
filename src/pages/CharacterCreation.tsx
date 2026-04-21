@@ -7,6 +7,7 @@ import { StorageService } from "../services/storageService";
 import { StatStepper } from "../components/StatStepper";
 import { useToast } from "../context/ToastContext";
 import { getSlayerMaxBreaths } from "../services/slayerProgression";
+import { BASE_ATTRIBUTE_VALUES, getCreationPointBudget } from "../services/levelProgression";
 
 import type { RPGCharacter } from "../types";
 
@@ -34,7 +35,12 @@ export function CharacterCreation() {
   
   // Stats
   const [stats, setStats] = useState({
-    str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10
+    str: BASE_ATTRIBUTE_VALUES.strength,
+    dex: BASE_ATTRIBUTE_VALUES.dexterity,
+    con: BASE_ATTRIBUTE_VALUES.constitution,
+    int: BASE_ATTRIBUTE_VALUES.intelligence,
+    wis: BASE_ATTRIBUTE_VALUES.wisdom,
+    cha: BASE_ATTRIBUTE_VALUES.charisma
   });
 
   // Skills
@@ -48,16 +54,28 @@ export function CharacterCreation() {
 
   // Computed
   const pointsSpent = useMemo(() => {
-    return (stats.str - 10) + (stats.dex - 10) + (stats.con - 10) + 
-           (stats.int - 10) + (stats.wis - 10) + (stats.cha - 10);
+      return (stats.str - BASE_ATTRIBUTE_VALUES.strength) +
+        (stats.dex - BASE_ATTRIBUTE_VALUES.dexterity) +
+        (stats.con - BASE_ATTRIBUTE_VALUES.constitution) +
+        (stats.int - BASE_ATTRIBUTE_VALUES.intelligence) +
+        (stats.wis - BASE_ATTRIBUTE_VALUES.wisdom) +
+        (stats.cha - BASE_ATTRIBUTE_VALUES.charisma);
   }, [stats]);
   
-  const pointsTotal = 9 + level;
+    const pointsTotal = getCreationPointBudget(level, 'slayer');
   const pointsRemaining = pointsTotal - pointsSpent;
 
   // Handlers
   const handleStatChange = (stat: keyof typeof stats, value: number) => {
-    if (value < 10) return;
+    const minValues = {
+      str: BASE_ATTRIBUTE_VALUES.strength,
+      dex: BASE_ATTRIBUTE_VALUES.dexterity,
+      con: BASE_ATTRIBUTE_VALUES.constitution,
+      int: BASE_ATTRIBUTE_VALUES.intelligence,
+      wis: BASE_ATTRIBUTE_VALUES.wisdom,
+      cha: BASE_ATTRIBUTE_VALUES.charisma,
+    };
+    if (value < minValues[stat]) return;
     const diff = value - stats[stat];
     if (diff > 0 && pointsRemaining < diff) return;
     setStats(prev => ({ ...prev, [stat]: value }));
@@ -138,10 +156,12 @@ export function CharacterCreation() {
           activeBuffDiceFace: null,
           activeBuffRoundsRemaining: null
         },
+        unspentLevelPoints: 0,
         
         age: "", height: "", weight: "", eyes: "", skin: "", hair: "",
         personalityTraits: "", ideals: "", bonds: "", flaws: "",
-        backstory: "", notes: ""
+        backstory: "", notes: "",
+        diceRollLogs: []
       };
 
       await CharacterService.create(newCharacter);
@@ -242,12 +262,12 @@ export function CharacterCreation() {
           </div>
           
           <div className="grid grid-cols-3 gap-3">
-            <StatStepper title="STR" value={stats.str} pointsRemaining={pointsRemaining} onChange={v => handleStatChange('str', v)} />
-            <StatStepper title="DEX" value={stats.dex} pointsRemaining={pointsRemaining} onChange={v => handleStatChange('dex', v)} />
-            <StatStepper title="CON" value={stats.con} pointsRemaining={pointsRemaining} onChange={v => handleStatChange('con', v)} />
-            <StatStepper title="INT" value={stats.int} pointsRemaining={pointsRemaining} onChange={v => handleStatChange('int', v)} />
-            <StatStepper title="WIS" value={stats.wis} pointsRemaining={pointsRemaining} onChange={v => handleStatChange('wis', v)} />
-            <StatStepper title="CHA" value={stats.cha} pointsRemaining={pointsRemaining} onChange={v => handleStatChange('cha', v)} />
+            <StatStepper title="STR" value={stats.str} pointsRemaining={pointsRemaining} onChange={v => handleStatChange('str', v)} min={BASE_ATTRIBUTE_VALUES.strength} />
+            <StatStepper title="DEX" value={stats.dex} pointsRemaining={pointsRemaining} onChange={v => handleStatChange('dex', v)} min={BASE_ATTRIBUTE_VALUES.dexterity} />
+            <StatStepper title="CON" value={stats.con} pointsRemaining={pointsRemaining} onChange={v => handleStatChange('con', v)} min={BASE_ATTRIBUTE_VALUES.constitution} />
+            <StatStepper title="INT" value={stats.int} pointsRemaining={pointsRemaining} onChange={v => handleStatChange('int', v)} min={BASE_ATTRIBUTE_VALUES.intelligence} />
+            <StatStepper title="WIS" value={stats.wis} pointsRemaining={pointsRemaining} onChange={v => handleStatChange('wis', v)} min={BASE_ATTRIBUTE_VALUES.wisdom} />
+            <StatStepper title="CHA" value={stats.cha} pointsRemaining={pointsRemaining} onChange={v => handleStatChange('cha', v)} min={BASE_ATTRIBUTE_VALUES.charisma} />
           </div>
         </section>
 

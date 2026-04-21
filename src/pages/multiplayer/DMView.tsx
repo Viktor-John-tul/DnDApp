@@ -8,9 +8,12 @@ import { CampaignService } from "../../services/campaignService";
 import { CharacterService } from "../../services/characterService";
 import type { GameSession } from "../../services/gameService";
 import type { Campaign, StatusEffect, InventoryItem } from "../../types";
-import { Copy, Users, Power, ArrowLeft, Sparkles, Backpack, FileText, Coins, X, Heart, Wind, Square, CheckSquare, Swords, Lock, Crosshair } from 'lucide-react';
+import { Copy, Users, Power, ArrowLeft, Sparkles, Backpack, FileText, Coins, X, Heart, Wind, Square, CheckSquare, Swords, Lock, Crosshair, ArrowUpCircle } from 'lucide-react';
 import { motion, AnimatePresence } from "framer-motion";
 import { CombatManager } from "../../components/CombatManager";
+import { Calculator } from "../../services/rules";
+import { getAttributePointGainAtLevel } from "../../services/levelProgression";
+import { getSlayerMaxBreaths, isSlayerType } from "../../services/slayerProgression";
 
 const COMMON_EFFECTS = [
     { name: "Advantage", type: "advantage" },
@@ -38,7 +41,7 @@ export function DMView() {
   const [selectedEffect, setSelectedEffect] = useState<string | null>(null);
   const [targetIds, setTargetIds] = useState<Set<string>>(new Set());
   const [applyingEffect, setApplyingEffect] = useState(false);
-  const [activeTool, setActiveTool] = useState<'effects' | 'items' | 'gold' | 'notes' | 'health' | 'actions' | 'forms' | 'combat'>('combat');
+    const [activeTool, setActiveTool] = useState<'effects' | 'items' | 'gold' | 'notes' | 'health' | 'actions' | 'forms' | 'combat' | 'levels'>('combat');
 
   // Action Adding State
   const [newActionParams, setNewActionParams] = useState({ name: "", description: "", type: "main" as 'main' | 'bonus' | 'reaction' | 'free' });
@@ -290,6 +293,53 @@ export function DMView() {
       }
   };
 
+  const handleLevelUpPlayers = async () => {
+      if (targetIds.size === 0) return;
+
+      const isConfirmed = await confirm({
+          title: "Level Up Players",
+          message: `Grant +1 level to ${targetIds.size} player(s)? They will receive attribute points to spend.`,
+          confirmText: "Level Up",
+          variant: "success"
+      });
+      if (!isConfirmed) return;
+
+      try {
+          const promises = Array.from(targetIds).map(async (charId) => {
+              const char = await CharacterService.get(charId);
+              if (!char) return;
+
+              const nextLevel = Math.min(20, (char.level || 1) + 1);
+              if (nextLevel === char.level) return;
+
+              const unspentPoints = (char.unspentLevelPoints || 0) + getAttributePointGainAtLevel(nextLevel, char.type);
+              const maxHP = char.customMaxHP ?? Calculator.getMaxHP(char.constitution, nextLevel);
+              const nextBreaths = isSlayerType(char.type) ? getSlayerMaxBreaths(nextLevel) : char.maxBreaths;
+
+              const levelUpUpdates = {
+                  level: nextLevel,
+                  unspentLevelPoints: unspentPoints,
+                  currentHP: maxHP,
+                  maxHP,
+                  currentBreaths: nextBreaths,
+                  maxBreaths: nextBreaths
+              };
+
+              await CharacterService.update(charId, levelUpUpdates);
+              if (sessionCode) {
+                  await GameService.syncCharacter(sessionCode, { ...char, ...levelUpUpdates });
+              }
+          });
+
+          await Promise.all(promises);
+          showToast(`Level granted to ${targetIds.size} player(s).`, 'success');
+          setTargetIds(new Set());
+      } catch (error) {
+          console.error("Failed to level up players", error);
+          showToast("Error leveling up players", 'error');
+      }
+  };
+
   const handleLockForms = async (shouldLock: boolean) => {
       if (targetIds.size === 0) return;
 
@@ -519,6 +569,13 @@ export function DMView() {
                   label="Notes"
                   color="text-purple-500" 
                 />
+                             <ToolTab 
+                                    active={activeTool === 'levels'} 
+                                    onClick={() => setActiveTool('levels')} 
+                                    icon={<ArrowUpCircle size={18}/>} 
+                                    label="Levels"
+                                    color="text-emerald-500" 
+                                />
            </div>
 
            {/* Tool Content */}
@@ -798,6 +855,29 @@ export function DMView() {
                                     className="bg-purple-500 text-white font-bold py-3 px-8 rounded-xl disabled:opacity-50 active:scale-[0.98] transition-all shadow-lg shadow-purple-200"
                                >
                                    {targetIds.size === 1 ? "Open Note Editor" : "Select 1 Player"}
+                               </button>
+                           </div>
+                       </motion.div>
+                   )}
+
+                   {activeTool === 'levels' && (
+                       <motion.div
+                         key="levels"
+                         initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
+                         className="space-y-4"
+                       >
+                           <div className="bg-emerald-50 rounded-xl p-6 border border-emerald-100 text-center">
+                               <ArrowUpCircle size={48} className="mx-auto text-emerald-300 mb-4" />
+                               <h3 className="font-bold text-emerald-900 text-lg mb-2">Level Up Players</h3>
+                               <p className="text-emerald-700/70 text-sm mb-6 max-w-sm mx-auto">
+                                   Select one or more players below, then grant them one level. They will receive attribute points to spend on their sheet.
+                               </p>
+                               <button
+                                    onClick={handleLevelUpPlayers}
+                                    disabled={targetIds.size === 0}
+                                    className="bg-emerald-500 text-white font-bold py-3 px-8 rounded-xl disabled:opacity-50 active:scale-[0.98] transition-all shadow-lg shadow-emerald-200"
+                               >
+                                   Grant +1 Level to {targetIds.size} Players
                                </button>
                            </div>
                        </motion.div>
