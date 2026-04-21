@@ -83,9 +83,9 @@ export function MainStatsTab({ character, onUpdate, readOnly }: Props) {
   };
 
   return (
-    <div className="space-y-6 pb-20">
+    <div className="space-y-6 lg:space-y-8 pb-20">
       {/* Vitals Row */}
-      <div className="grid grid-cols-4 gap-2">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 md:gap-3">
         <VitalCard icon={<Shield size={16}/>} label="AC" value={ac} color="text-blue-600" bg="bg-blue-50" />
         <VitalCard icon={<Zap size={16}/>} label="Init" value={initiative >= 0 ? `+${initiative}` : initiative} color="text-yellow-600" bg="bg-yellow-50" />
         <VitalCard icon={<PersonStanding size={16}/>} label="Speed" value={`${speed}ft`} color={isEncumbered ? "text-red-500" : "text-green-600"} bg={isEncumbered ? "bg-red-50" : "bg-green-50"} />
@@ -104,7 +104,7 @@ export function MainStatsTab({ character, onUpdate, readOnly }: Props) {
       </div>
 
       {/* Attributes Grid */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         <AttributeCard 
             title="STR" score={character.strength}
             onCheck={() => handleRoll("STR Check", Calculator.getModifier(character.strength))} 
@@ -164,7 +164,7 @@ export function MainStatsTab({ character, onUpdate, readOnly }: Props) {
 
       {/* Floating Buttons: Health */}
       {!readOnly && (
-      <div className="fixed bottom-24 right-4 z-40">
+      <div className="fixed bottom-24 right-4 md:right-6 lg:right-8 z-40">
         <button 
             onClick={() => setShowHealth(true)}
             className="flex flex-col items-center justify-center w-16 h-16 rounded-full bg-red-500 text-white shadow-lg shadow-red-500/30 hover:scale-105 transition active:scale-95"

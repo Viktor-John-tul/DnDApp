@@ -98,6 +98,14 @@ export interface BuffState {
   isRegenBuff?: boolean;
 }
 
+export interface DiceRollLog {
+  id: string;
+  purpose: string;
+  notation: string;
+  total: number;
+  createdAt: number;
+}
+
 export interface RPGCharacter {
   id?: string; // Firestore ID
   userId: string; // Owner
@@ -106,6 +114,7 @@ export interface RPGCharacter {
 
   characterClass: string;
   level: number;
+  unspentLevelPoints?: number;
 
   // Stats
   strength: number;
@@ -177,6 +186,7 @@ export interface RPGCharacter {
   backstory: string;
   notes: string;
   dmNotes?: string;
+  diceRollLogs?: DiceRollLog[];
   activeSessionCode?: string; // For persistent session connections
   campaigns?: CampaignMembership[];
   

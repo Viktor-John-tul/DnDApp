@@ -7,12 +7,13 @@ interface Props {
   onChange: (newValue: number) => void;
   max?: number;
   color?: string;
+  min?: number;
 }
 
-export function StatStepper({ title, value, pointsRemaining, onChange, max = 20, color = 'cyan' }: Props) {
+export function StatStepper({ title, value, pointsRemaining, onChange, max = 20, color = 'cyan', min }: Props) {
   const isCapped = value >= max;
   const hasPoints = pointsRemaining !== undefined ? pointsRemaining > 0 : true;
-  const minVal = pointsRemaining !== undefined ? 10 : 1;
+  const minVal = min ?? (pointsRemaining !== undefined ? 10 : 1);
   const textColor = color === 'red' ? 'text-red-600' : 'text-slayer-cyan';
   
   const minusBtnClass = "w-8 h-8 rounded-full flex items-center justify-center transition disabled:opacity-50 disabled:cursor-not-allowed bg-gray-100 text-gray-600 hover:bg-gray-200";

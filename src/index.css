@@ -3,6 +3,12 @@
 @tailwind utilities;
 
 @layer base {
+  html,
+  body,
+  #root {
+    @apply min-h-screen w-full m-0;
+  }
+
   body {
     @apply bg-gray-100 text-gray-900;
   }

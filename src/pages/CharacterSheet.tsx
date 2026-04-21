@@ -2,19 +2,22 @@ import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { CharacterService } from "../services/characterService";
 import { CampaignService } from "../services/campaignService";
-import type { Campaign, RPGCharacter } from "../types";
+import type { Campaign, DiceRollLog, RPGCharacter } from "../types";
 import type { GameSession } from "../services/gameService";
 import { MainStatsTab } from "./tabs/MainStatsTab";
 import { CombatTab } from "./tabs/CombatTab";
 import { InventoryTab } from "./tabs/InventoryTab";
 import { BioTab } from "./tabs/BioTab";
+import { RollsLogTab } from "./tabs/RollsLogTab";
 import { DeathScreen } from "../components/DeathScreen";
-import { Shield, Swords, Backpack, Book, ChevronLeft, Loader2, Wifi } from "lucide-react";
+import { LevelProgressionModal } from "../components/LevelProgressionModal";
+import { Shield, Swords, Backpack, Book, ChevronLeft, Loader2, Wifi, ScrollText, Dice6, X, Plus, Minus, ArrowUp } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { GameService } from "../services/gameService";
 import { useToast } from "../context/ToastContext";
+import { DiceRollerOverlay } from "../components/DiceRollerOverlay";
 
-type TabId = 'stats' | 'combat' | 'inventory' | 'bio';
+type TabId = 'stats' | 'combat' | 'inventory' | 'bio' | 'logs';
 
 export function CharacterSheet() {
   const { id } = useParams();
@@ -31,9 +34,18 @@ export function CharacterSheet() {
     const [joinCode, setJoinCode] = useState("");
     const [joinedCampaigns, setJoinedCampaigns] = useState<Campaign[]>([]);
     const [campaignLoading, setCampaignLoading] = useState(false);
+        const [showFreeRollModal, setShowFreeRollModal] = useState(false);
+        const [freeRollPurpose, setFreeRollPurpose] = useState("");
+        const [freeRollCount, setFreeRollCount] = useState(1);
+        const [freeRollFace, setFreeRollFace] = useState(20);
+        const [activeFreeRoll, setActiveFreeRoll] = useState<{ label: string; count: number; face: number } | null>(null);
+          const [showLevelModal, setShowLevelModal] = useState(false);
+          const [levelModalMode, setLevelModalMode] = useState<"preview" | "level-up">("preview");
   
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prevCharacterRef = useRef<RPGCharacter | null>(null);
+    const lastLevelSeenRef = useRef<number | null>(null);
+      const levelPopupHandledRef = useRef<number | null>(null);
 
   // Check DM Status
   useEffect(() => {
@@ -127,6 +139,19 @@ export function CharacterSheet() {
   }, [character?.activeSessionCode, id]);
 
     useEffect(() => {
+        if (!character) return;
+        const pendingLevelPoints = character.unspentLevelPoints ?? 0;
+        const levelChanged = lastLevelSeenRef.current !== null && lastLevelSeenRef.current !== character.level;
+        lastLevelSeenRef.current = character.level;
+
+        if (!levelChanged && pendingLevelPoints <= 0) return;
+        if (levelPopupHandledRef.current === character.level) return;
+        levelPopupHandledRef.current = character.level;
+        setLevelModalMode("level-up");
+        setShowLevelModal(true);
+    }, [character?.level, character?.unspentLevelPoints]);
+
+    useEffect(() => {
         if (!showJoinModal) return;
         const memberships = character?.campaigns || [];
         if (memberships.length === 0) {
@@ -183,6 +208,20 @@ export function CharacterSheet() {
         }
     }, 1000);
   };
+
+    const appendRollLog = (purpose: string, notation: string, total: number) => {
+        if (!character || !id) return;
+        const logEntry: DiceRollLog = {
+            id: crypto.randomUUID(),
+            purpose,
+            notation,
+            total,
+            createdAt: Date.now()
+        };
+        const currentLogs = character.diceRollLogs || [];
+        const updatedLogs = [logEntry, ...currentLogs].slice(0, 200);
+        handleUpdate({ diceRollLogs: updatedLogs });
+    };
 
     const handleJoinCampaign = async (code: string) => {
         if (!character || !id) return;
@@ -264,15 +303,15 @@ export function CharacterSheet() {
 
   if (!character) return null;
 
-  return (
-    <div className="bg-gray-50 h-[100dvh] flex flex-col max-w-md mx-auto shadow-2xl overflow-hidden relative">
+    return (
+        <div className="bg-gray-50 min-h-[100dvh] w-full flex flex-col overflow-hidden relative">
         
         {character.currentHP <= 0 && (
             <DeathScreen character={character} onUpdate={handleUpdate} />
         )}
 
         {/* Header */}
-        <header className="bg-white border-b border-gray-100 px-4 py-3 flex items-center gap-3 sticky top-0 z-30 shadow-sm">
+        <header className="bg-white border-b border-gray-100 px-4 md:px-6 lg:px-8 py-3 flex items-center gap-3 sticky top-0 z-30 shadow-sm">
             <button 
                 onClick={() => navigate('/')}
                 className="p-1 -ml-2 rounded-full active:bg-gray-100 text-gray-500"
@@ -298,16 +337,59 @@ export function CharacterSheet() {
             )}
         </header>
 
-        {/* Content Area */}
-        <main className="flex-1 overflow-y-auto p-4 custom-scrollbar">
-            {activeTab === 'stats' && <MainStatsTab character={character} onUpdate={handleUpdate} readOnly={isReadOnly} />}
-            {activeTab === 'combat' && <CombatTab character={character} onUpdate={handleUpdate} readOnly={isReadOnly} isDM={isDM} session={activeSession} />}
-            {activeTab === 'inventory' && <InventoryTab character={character} onUpdate={handleUpdate} readOnly={isReadOnly} />}
-            {activeTab === 'bio' && <BioTab character={character} onUpdate={handleUpdate} readOnly={isReadOnly} />}
-        </main>
+        {/* Responsive Sheet Layout */}
+        <div className="flex-1 min-h-0 md:grid md:grid-cols-[220px_minmax(0,1fr)]">
+            {/* Tablet/Desktop Side Navigation */}
+            <aside className="hidden md:flex md:flex-col md:gap-2 bg-white border-r border-gray-200 p-3 lg:p-4">
+                <TabButton
+                    active={activeTab === 'stats'}
+                    onClick={() => setActiveTab('stats')}
+                    icon={<Shield size={20} />}
+                    label="Stats"
+                    desktop
+                />
+                <TabButton
+                    active={activeTab === 'combat'}
+                    onClick={() => setActiveTab('combat')}
+                    icon={<Swords size={20} />}
+                    label="Combat"
+                    desktop
+                />
+                <TabButton
+                    active={activeTab === 'inventory'}
+                    onClick={() => setActiveTab('inventory')}
+                    icon={<Backpack size={20} />}
+                    label="Inventory"
+                    desktop
+                />
+                <TabButton
+                    active={activeTab === 'bio'}
+                    onClick={() => setActiveTab('bio')}
+                    icon={<Book size={20} />}
+                    label="Bio"
+                    desktop
+                />
+                <TabButton
+                    active={activeTab === 'logs'}
+                    onClick={() => setActiveTab('logs')}
+                    icon={<ScrollText size={20} />}
+                    label="Logs"
+                    desktop
+                />
+            </aside>
 
-        {/* Bottom Navigation */}
-        <nav className="bg-white border-t border-gray-200 px-6 py-2 pb-6 flex justify-between items-center z-30 sticky bottom-0">
+            {/* Content Area */}
+            <main className="min-h-0 overflow-y-auto px-4 md:px-8 lg:px-12 py-4 md:py-6 lg:py-8 custom-scrollbar">
+                {activeTab === 'stats' && <MainStatsTab character={character} onUpdate={handleUpdate} readOnly={isReadOnly} onRollLogged={appendRollLog} />}
+                {activeTab === 'combat' && <CombatTab character={character} onUpdate={handleUpdate} readOnly={isReadOnly} isDM={isDM} session={activeSession} onRollLogged={appendRollLog} />}
+                {activeTab === 'inventory' && <InventoryTab character={character} onUpdate={handleUpdate} readOnly={isReadOnly} />}
+                {activeTab === 'bio' && <BioTab character={character} onUpdate={handleUpdate} readOnly={isReadOnly} />}
+                {activeTab === 'logs' && <RollsLogTab logs={character.diceRollLogs || []} />}
+            </main>
+        </div>
+
+        {/* Mobile Bottom Navigation */}
+        <nav className="md:hidden bg-white border-t border-gray-200 px-4 py-2 pb-6 z-30 sticky bottom-0 flex justify-between items-center">
             <TabButton 
                 active={activeTab === 'stats'} 
                 onClick={() => setActiveTab('stats')} 
@@ -332,7 +414,151 @@ export function CharacterSheet() {
                 icon={<Book size={24} />} 
                 label="Bio" 
             />
+            <TabButton 
+                active={activeTab === 'logs'} 
+                onClick={() => setActiveTab('logs')} 
+                icon={<ScrollText size={24} />} 
+                label="Logs" 
+            />
         </nav>
+
+        {!isReadOnly && (
+            <div className="fixed bottom-64 right-4 md:right-8 z-40">
+                <button
+                    onClick={() => {
+                        setLevelModalMode("preview");
+                        setShowLevelModal(true);
+                    }}
+                    className="flex flex-col items-center justify-center w-16 h-16 rounded-full bg-slayer-orange text-white shadow-lg shadow-orange-400/30 hover:scale-105 transition active:scale-95"
+                >
+                    <ArrowUp size={22} />
+                    <span className="text-[10px] font-bold mt-0.5">Lvl</span>
+                </button>
+            </div>
+        )}
+
+        {!isReadOnly && (
+            <div className="fixed bottom-24 left-4 md:left-auto md:right-8 md:bottom-44 z-40">
+                <button
+                    onClick={() => setShowFreeRollModal(true)}
+                    className="flex flex-col items-center justify-center w-16 h-16 rounded-full bg-gray-900 text-white shadow-lg shadow-black/30 hover:scale-105 transition active:scale-95"
+                >
+                    <Dice6 size={24} />
+                    <span className="text-[10px] font-bold mt-0.5">Roll</span>
+                </button>
+            </div>
+        )}
+
+        {showFreeRollModal && (
+            <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl">
+                    <div className="flex items-center justify-between mb-4">
+                        <h3 className="font-bold text-lg text-gray-900">Free Dice Roll</h3>
+                        <button
+                            onClick={() => setShowFreeRollModal(false)}
+                            className="text-gray-400 hover:text-gray-600"
+                        >
+                            <X size={22} />
+                        </button>
+                    </div>
+
+                    <div className="space-y-4">
+                        <div>
+                            <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Rolled For</label>
+                            <input
+                                value={freeRollPurpose}
+                                onChange={(e) => setFreeRollPurpose(e.target.value)}
+                                placeholder="e.g. Perception check"
+                                className="w-full p-3 border border-gray-200 rounded-xl text-sm font-medium"
+                            />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Dice Count</label>
+                                <div className="flex items-center bg-gray-50 rounded-xl p-1 border border-gray-200">
+                                    <button
+                                        onClick={() => setFreeRollCount((prev) => Math.max(1, prev - 1))}
+                                        className="w-9 h-9 flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-200 rounded-lg transition-colors"
+                                    >
+                                        <Minus size={16} />
+                                    </button>
+                                    <div className="flex-1 text-center font-mono text-lg font-bold text-gray-900">{freeRollCount}</div>
+                                    <button
+                                        onClick={() => setFreeRollCount((prev) => Math.min(20, prev + 1))}
+                                        className="w-9 h-9 flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-200 rounded-lg transition-colors"
+                                    >
+                                        <Plus size={16} />
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Dice Type</label>
+                                <select
+                                    value={freeRollFace}
+                                    onChange={(e) => setFreeRollFace(parseInt(e.target.value))}
+                                    className="w-full h-[46px] bg-gray-50 border border-gray-200 text-gray-900 rounded-xl px-3 font-bold"
+                                >
+                                    <option value={2}>d2</option>
+                                    <option value={4}>d4</option>
+                                    <option value={6}>d6</option>
+                                    <option value={8}>d8</option>
+                                    <option value={10}>d10</option>
+                                    <option value={12}>d12</option>
+                                    <option value={20}>d20</option>
+                                    <option value={100}>d100</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div className="rounded-xl border border-gray-200 bg-gray-50 p-3 text-center">
+                            <div className="text-xs uppercase font-bold text-gray-400">Ready Roll</div>
+                            <div className="text-2xl font-black text-slayer-orange mt-1">{freeRollCount}d{freeRollFace}</div>
+                        </div>
+
+                        <button
+                            onClick={() => {
+                                setShowFreeRollModal(false);
+                                setActiveFreeRoll({
+                                    label: freeRollPurpose.trim() || "Free Roll",
+                                    count: freeRollCount,
+                                    face: freeRollFace
+                                });
+                            }}
+                            className="w-full py-3 rounded-xl bg-gray-900 text-white font-bold"
+                        >
+                            Roll Dice
+                        </button>
+                    </div>
+                </div>
+            </div>
+        )}
+
+        {activeFreeRoll && (
+            <DiceRollerOverlay
+                mode="normal"
+                modifier={0}
+                label={activeFreeRoll.label}
+                diceCount={activeFreeRoll.count}
+                diceFace={activeFreeRoll.face}
+                onComplete={(total) => {
+                    if (total !== undefined) {
+                        appendRollLog(activeFreeRoll.label, `${activeFreeRoll.count}d${activeFreeRoll.face}`, total);
+                    }
+                    setActiveFreeRoll(null);
+                }}
+            />
+        )}
+
+        {showLevelModal && (
+            <LevelProgressionModal
+                character={character}
+                mode={levelModalMode}
+                onClose={() => setShowLevelModal(false)}
+                onApply={(updates) => handleUpdate(updates)}
+            />
+        )}
 
                 {showJoinModal && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
@@ -426,16 +652,19 @@ export function CharacterSheet() {
   );
 }
 
-function TabButton({ active, onClick, icon, label }: any) {
+function TabButton({ active, onClick, icon, label, desktop = false }: any) {
     return (
         <button 
             onClick={onClick}
-            className={`flex flex-col items-center gap-1 transition-colors ${active ? 'text-black' : 'text-gray-300 hover:text-gray-500'}`}
+            className={desktop
+                ? `w-full flex items-center gap-3 px-3 py-2 rounded-xl border transition-colors ${active ? 'text-black bg-gray-100 border-gray-200' : 'text-gray-500 border-transparent hover:bg-gray-50 hover:text-gray-700'}`
+                : `flex flex-col items-center gap-1 transition-colors ${active ? 'text-black' : 'text-gray-300 hover:text-gray-500'}`
+            }
         >
             <div className={`p-1 rounded-xl transition-all ${active ? 'bg-gray-100' : 'bg-transparent'}`}>
                 {icon}
             </div>
-            <span className="text-[10px] font-bold">{label}</span>
+            <span className={desktop ? 'text-sm font-bold' : 'text-[10px] font-bold'}>{label}</span>
         </button>
     );
 }

@@ -7,6 +7,7 @@ import { StorageService } from "../services/storageService";
 import { StatStepper } from "../components/StatStepper";
 
 import type { RPGCharacter, CharacterType } from "../types";
+import { BASE_ATTRIBUTE_VALUES } from "../services/levelProgression";
 
 const ALL_SKILLS = [
   "Acrobatics (Dex)", "Animal Handling (Wis)", "Arcana (Int)", "Athletics (Str)",
@@ -30,7 +31,12 @@ export function DemonCreation() {
   
   // Stats
   const [stats, setStats] = useState({
-    str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10
+    str: BASE_ATTRIBUTE_VALUES.strength,
+    dex: BASE_ATTRIBUTE_VALUES.dexterity,
+    con: BASE_ATTRIBUTE_VALUES.constitution,
+    int: BASE_ATTRIBUTE_VALUES.intelligence,
+    wis: BASE_ATTRIBUTE_VALUES.wisdom,
+    cha: BASE_ATTRIBUTE_VALUES.charisma
   });
 
   // Manual Vitals
@@ -145,11 +151,13 @@ export function DemonCreation() {
           activeBuffDiceFace: null,
           activeBuffRoundsRemaining: null
         },
+        unspentLevelPoints: 0,
         
         // Fluff
         age: "", height: "", weight: "", eyes: "", skin: "", hair: "",
         personalityTraits: "", ideals: "", bonds: "", flaws: "",
-        backstory: "", notes: ""
+        backstory: "", notes: "",
+        diceRollLogs: []
       };
 
       await CharacterService.create(newCharacter);
