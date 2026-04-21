@@ -178,11 +178,11 @@ export function CharacterCreation() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-10">
+    <div className="min-h-screen bg-gray-100 pb-20">
         
       {/* Header */}
-      <header className="fixed top-0 inset-x-0 bg-white shadow-sm z-10 px-3 sm:px-4 py-3 sm:py-4">
-        <div className="max-w-5xl mx-auto flex items-center justify-between gap-3">
+      <header className="fixed top-0 inset-x-0 bg-white shadow-sm z-10 p-4">
+        <div className="max-w-3xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Link to="/" className="p-2 -ml-2 text-gray-500 hover:bg-gray-100 rounded-full">
               <ChevronLeft size={24} />
@@ -199,7 +199,7 @@ export function CharacterCreation() {
         </div>
       </header>
       
-      <main className="max-w-5xl mx-auto p-3 sm:p-4 lg:p-6 pt-20 sm:pt-24 space-y-6 sm:space-y-8">
+      <main className="max-w-3xl mx-auto p-4 pt-20 space-y-8">
         
         {/* Identity */}
         <section className="space-y-4">
@@ -212,13 +212,13 @@ export function CharacterCreation() {
               value={name} onChange={e => setName(e.target.value)}
               className="w-full p-3 bg-gray-50 rounded-xl border-none focus:ring-2 focus:ring-slayer-orange outline-none"
             />
-            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+            <div className="flex gap-4">
               <input 
                 type="text" placeholder="Rank (e.g. Mizunoto)" 
                 value={rank} onChange={e => setRank(e.target.value)}
                 className="flex-1 p-3 bg-gray-50 rounded-xl border-none focus:ring-2 focus:ring-slayer-orange outline-none"
               />
-              <div className="flex items-center gap-2 bg-gray-50 px-3 rounded-xl min-w-0 sm:min-w-[120px]">
+              <div className="flex items-center gap-2 bg-gray-50 px-3 rounded-xl min-w-[120px]">
                 <span className="text-gray-500 text-sm font-bold">Level</span>
                 <input 
                   type="number" min="1" max="20"
@@ -241,7 +241,7 @@ export function CharacterCreation() {
             </div>
           </div>
           
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
+          <div className="grid grid-cols-3 gap-3">
             <StatStepper title="STR" value={stats.str} pointsRemaining={pointsRemaining} onChange={v => handleStatChange('str', v)} />
             <StatStepper title="DEX" value={stats.dex} pointsRemaining={pointsRemaining} onChange={v => handleStatChange('dex', v)} />
             <StatStepper title="CON" value={stats.con} pointsRemaining={pointsRemaining} onChange={v => handleStatChange('con', v)} />
@@ -258,7 +258,7 @@ export function CharacterCreation() {
                 <span className="text-sm text-gray-500">Pick {2 - selectedSkills.length} more</span>
             </div>
             
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
+            <div className="grid grid-cols-2 gap-2">
                 {ALL_SKILLS.map(skill => (
                 <SkillButton key={skill} skill={skill} />
                 ))}
@@ -268,8 +268,8 @@ export function CharacterCreation() {
         {/* Photo */}
         <section className="space-y-4">
           <h2 className="text-lg font-bold text-gray-900">Visuals</h2>
-          <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-200 flex flex-col items-center gap-4">
-            <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-2xl bg-gray-100 overflow-hidden relative">
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 flex flex-col items-center gap-4">
+            <div className="w-32 h-32 rounded-2xl bg-gray-100 overflow-hidden relative">
               {photoPreview ? (
                 <img src={photoPreview} alt="Preview" className="w-full h-full object-cover" />
               ) : (

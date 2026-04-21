@@ -102,8 +102,8 @@ export function DMCampaigns() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 p-3 sm:p-4 pb-24 md:pb-10">
-      <header className="flex items-center justify-between gap-3 mb-5 sm:mb-6">
+    <div className="min-h-screen bg-gray-100 p-4 pb-24">
+      <header className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-2">
           <Link to="/" className="text-gray-500 hover:text-gray-800">
             <ArrowLeft size={20} />
@@ -123,7 +123,7 @@ export function DMCampaigns() {
           <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-slayer-orange"></div>
         </div>
       ) : (
-        <div className="space-y-3 sm:space-y-4">
+        <div className="space-y-4">
           {campaigns.length === 0 && (
             <div className="text-center py-10 text-gray-400">
               No campaigns yet. Create one to start playing.
@@ -138,10 +138,10 @@ export function DMCampaigns() {
               : "mt-4 w-full flex items-center justify-between px-3 py-2 rounded-xl border border-gray-200 text-sm font-bold text-gray-600 hover:bg-gray-50";
 
             return (
-            <div key={campaign.id} className="bg-white rounded-2xl p-3 sm:p-4 border border-gray-200 shadow-sm">
+            <div key={campaign.id} className="bg-white rounded-2xl p-4 border border-gray-200 shadow-sm">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <h2 className="text-lg font-bold text-gray-900 truncate">{campaign.name}</h2>
+                  <h2 className="text-lg font-bold text-gray-900">{campaign.name}</h2>
                   <div className="mt-2 flex items-center gap-2">
                     <span className="text-xs text-gray-400 uppercase tracking-widest">Invite</span>
                     <span className="font-mono font-bold text-slayer-orange tracking-wider">{campaign.inviteCode}</span>
@@ -156,7 +156,7 @@ export function DMCampaigns() {
                     </button>
                   </div>
                 </div>
-                <div className="text-xs font-bold uppercase tracking-widest shrink-0">
+                <div className="text-xs font-bold uppercase tracking-widest">
                   {campaign.activeSessionCode ? (
                     <span className="text-green-500">Live</span>
                   ) : (
@@ -201,7 +201,7 @@ export function DMCampaigns() {
                   {members.length === 0 ? (
                     <div className="text-sm text-gray-400">No players joined yet.</div>
                   ) : (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                       {members.map((member) => {
                         const initial = member.name.trim().charAt(0).toUpperCase() || "?";
 
@@ -243,8 +243,8 @@ export function DMCampaigns() {
       )}
 
       {showCreate && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl p-4 sm:p-6 w-full max-w-full sm:max-w-sm lg:max-w-md shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl">
             <h3 className="font-bold text-lg mb-4">Create Campaign</h3>
             <input
               autoFocus

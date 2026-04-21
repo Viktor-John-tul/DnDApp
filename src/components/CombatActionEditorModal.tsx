@@ -35,8 +35,8 @@ export function CombatActionEditorModal({ action, initialType = 'main', onSave, 
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/50 backdrop-blur-sm">
-            <div className="bg-white w-full max-w-full sm:max-w-md lg:max-w-lg rounded-2xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+            <div className="bg-white w-full max-w-md rounded-2xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
                 <div className="flex justify-between items-center p-4 border-b border-gray-100 bg-gray-50/50">
                     <h2 className="font-bold text-lg">{action ? 'Edit Action' : 'New Action'}</h2>
                     <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
@@ -44,7 +44,7 @@ export function CombatActionEditorModal({ action, initialType = 'main', onSave, 
                     </button>
                 </div>
 
-                <div className="p-4 sm:p-6 space-y-4">
+                <div className="p-6 space-y-4">
                     <div>
                         <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Action Name</label>
                         <input 

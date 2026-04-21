@@ -54,14 +54,13 @@ export function Dashboard() {
   });
 
   return (
-    <div className={`min-h-screen p-3 sm:p-4 pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-10 ${viewMode === 'npc' ? 'bg-gray-950' : 'bg-gray-100'}`}>
-      <div className="max-w-5xl mx-auto">
-      <header className="flex justify-between items-center gap-3 mb-5 sm:mb-6">
-        <h1 className={`text-xl sm:text-2xl font-bold ${viewMode === 'npc' ? 'text-purple-600' : 'text-gray-900'}`}>
+    <div className={`min-h-screen p-4 pb-20 ${viewMode === 'npc' ? 'bg-gray-950' : 'bg-gray-100'}`}>
+      <header className="flex justify-between items-center mb-6">
+        <h1 className={`text-2xl font-bold ${viewMode === 'npc' ? 'text-purple-600' : 'text-gray-900'}`}>
             {viewMode === 'npc' ? 'NPCs' : 'Slayer Corps'}
         </h1>
         <div className="flex gap-2">
-            <Link to="/dm" className={`px-2 sm:px-3 py-2 rounded-full shadow-sm font-bold text-[11px] sm:text-xs flex items-center gap-1 transition-colors ${activeCampaignCount > 0 ? 'bg-gray-800 text-white hover:bg-gray-700 border border-gray-700' : 'text-slayer-orange bg-white hover:bg-orange-50'}`}>
+            <Link to="/dm" className={`p-2 rounded-full shadow-sm font-bold text-xs flex items-center gap-1 transition-colors ${activeCampaignCount > 0 ? 'bg-gray-800 text-white hover:bg-gray-700 border border-gray-700' : 'text-slayer-orange bg-white hover:bg-orange-50'}`}>
               {activeCampaignCount > 0 ? <Eye size={16} /> : <Users size={16} />}
               {activeCampaignCount > 0 ? 'DM LIVE' : 'DM'}
             </Link>
@@ -75,7 +74,7 @@ export function Dashboard() {
       </header>
 
       {/* View Toggle */}
-      <div className="flex bg-white/10 p-1 rounded-xl mb-5 sm:mb-6 backdrop-blur-sm border border-gray-200/20">
+      <div className="flex bg-white/10 p-1 rounded-xl mb-6 backdrop-blur-sm border border-gray-200/20">
           <button 
              onClick={() => setViewMode('slayer')}
              className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-bold transition-all ${
@@ -99,7 +98,7 @@ export function Dashboard() {
            <div className="absolute -right-4 -bottom-4 opacity-5 pointer-events-none">
              <Users size={120} />
            </div>
-           <div className="relative z-10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+           <div className="relative z-10 flex justify-between items-center">
              <div>
                <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1">Active Campaign Sessions</div>
                <div className="text-3xl font-bold text-white">{activeCampaignCount}</div>
@@ -143,7 +142,6 @@ export function Dashboard() {
             </Link>
         </div>
       )}
-      </div>
     </div>
   );
 }

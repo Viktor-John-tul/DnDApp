@@ -162,7 +162,7 @@ export function DemonCreation() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-950 p-3 sm:p-4 pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-10">
+    <div className="min-h-screen bg-gray-950 p-4 pb-20">
       <header className="flex items-center gap-2 mb-6">
         <Link to="/" className="p-2 text-purple-500 bg-gray-900 rounded-full">
           <ChevronLeft size={24} />
@@ -170,13 +170,13 @@ export function DemonCreation() {
         <h1 className="text-2xl font-bold text-purple-500">New NPC</h1>
       </header>
       
-      <div className="space-y-5 sm:space-y-6 max-w-3xl mx-auto">
+      <div className="space-y-6 max-w-lg mx-auto">
         
         {/* Identity Section */}
         <section className="bg-gray-900 p-4 rounded-xl shadow-lg border border-purple-900/30">
           <div className="flex justify-center mb-6">
             <label className="relative block cursor-pointer group">
-              <div className={`w-20 h-20 sm:w-24 sm:h-24 rounded-full border-4 border-purple-900 overflow-hidden flex items-center justify-center bg-gray-950 ${!photoPreview && 'text-purple-900'}`}>
+              <div className={`w-24 h-24 rounded-full border-4 border-purple-900 overflow-hidden flex items-center justify-center bg-gray-950 ${!photoPreview && 'text-purple-900'}`}>
                 {photoPreview ? (
                   <img src={photoPreview} alt="Preview" className="w-full h-full object-cover" />
                 ) : (
@@ -191,7 +191,7 @@ export function DemonCreation() {
             {/* Character Type Selector */}
             <div>
               <label className="block text-xs font-bold text-purple-700 uppercase mb-2">NPC Type</label>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 <button
                   type="button"
                   onClick={() => setCharacterType('demon')}
@@ -238,7 +238,7 @@ export function DemonCreation() {
               />
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+            <div className="grid grid-cols-2 gap-4">
                 <div>
                     <label className="block text-xs font-bold text-purple-700 uppercase mb-1">Rank / Class</label>
                     <input 
@@ -280,7 +280,7 @@ export function DemonCreation() {
             <h2 className="font-bold text-purple-500 mb-4 flex items-center gap-2">
                 <Heart size={18}/> Combat Stats
             </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-3">
                 {[
                     { label: 'Max HP', key: 'hp', icon: Heart },
                     { label: 'Armor Class', key: 'ac', icon: Shield },
@@ -325,7 +325,7 @@ export function DemonCreation() {
                <span className="text-xs text-gray-500 uppercase">{selectedSkills.length} Selected</span>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 gap-2">
             {ALL_SKILLS.map(skill => (
               <button
                 key={skill}
@@ -345,7 +345,7 @@ export function DemonCreation() {
         <button
           onClick={handleSaveCharacter}
           disabled={!name || isSaving}
-          className="w-full bg-purple-600 text-white font-bold py-4 rounded-xl shadow-lg hover:bg-purple-500 disabled:opacity-50 disabled:cursor-not-allowed sticky bottom-3 sm:bottom-4"
+          className="w-full bg-purple-600 text-white font-bold py-4 rounded-xl shadow-lg hover:bg-purple-500 disabled:opacity-50 disabled:cursor-not-allowed sticky bottom-4"
         >
           {isSaving ? "Creating..." : "Create NPC"}
         </button>

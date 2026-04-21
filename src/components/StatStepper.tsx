@@ -21,9 +21,9 @@ export function StatStepper({ title, value, pointsRemaining, onChange, max = 20,
       : "w-8 h-8 rounded-full flex items-center justify-center transition disabled:opacity-50 disabled:cursor-not-allowed bg-green-100 text-green-600 hover:bg-green-200";
 
   return (
-    <div className={`bg-white p-3 sm:p-4 rounded-2xl shadow-sm border border-gray-200 flex flex-col items-center gap-3 sm:gap-4 min-h-32 sm:min-h-36 ${color === 'red' ? 'border-red-100/50' : ''}`}>
+    <div className={`bg-white p-4 rounded-2xl shadow-sm border border-gray-200 flex flex-col items-center gap-4 h-36 ${color === 'red' ? 'border-red-100/50' : ''}`}>
       <span className="font-bold text-gray-500 uppercase text-sm">{title}</span>
-      <span className={`text-3xl sm:text-4xl font-bold ${value > 10 ? textColor : 'text-gray-900'}`}>
+      <span className={`text-4xl font-bold ${value > 10 ? textColor : 'text-gray-900'}`}>
         {value}
       </span>
       

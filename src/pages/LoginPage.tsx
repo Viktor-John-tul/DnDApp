@@ -8,8 +8,8 @@ export function LoginPage() {
   if (user) return <Navigate to="/" />;
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100 p-3 sm:p-4">
-      <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-xl w-full max-w-md md:max-w-lg text-center">
+    <div className="min-h-screen flex items-center justify-center bg-gray-100 p-4">
+      <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md text-center">
         <h1 className="text-3xl font-bold mb-2 text-gray-800">Demon Slayer RPG</h1>
         <p className="text-gray-500 mb-8">Sign in to access your characters</p>
         
