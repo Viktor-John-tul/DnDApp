@@ -96,11 +96,12 @@ export function CombatManager({ session, sessionCode }: CombatManagerProps) {
 
   const handleRollInitiative = async (participantId: string) => {
     try {
-      const participant = players.find(p => p.id === participantId);
+      const participant = combat?.participants.find(p => p.id === participantId);
       if (!participant) return;
+      if (participant.type !== 'npc') return;
 
       const d20 = Math.floor(Math.random() * 20) + 1;
-      const initBonus = participant.initiative || 0;
+      const initBonus = session.players?.[participantId]?.initiative || 0;
       const total = d20 + initBonus;
 
       await GameService.updateInitiative(sessionCode, participantId, total);
@@ -264,6 +265,10 @@ export function CombatManager({ session, sessionCode }: CombatManagerProps) {
                   {participant.initiative > 0 ? (
                     <div className="bg-green-100 text-green-800 px-3 py-1 rounded font-bold text-sm">
                       {participant.initiative}
+                    </div>
+                  ) : participant.type === 'player' ? (
+                    <div className="bg-blue-50 text-blue-700 px-3 py-1 rounded font-bold text-xs border border-blue-200">
+                      Waiting Player Roll
                     </div>
                   ) : (
                     <button

@@ -51,6 +51,8 @@ export function CharacterSheet() {
                             diceCount: number;
                             diceFace: number;
                     } | null>(null);
+                        const [showInitiativePrompt, setShowInitiativePrompt] = useState(false);
+                        const [activeInitiativeRoll, setActiveInitiativeRoll] = useState<{ modifier: number } | null>(null);
   
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prevCharacterRef = useRef<RPGCharacter | null>(null);
@@ -191,6 +193,17 @@ export function CharacterSheet() {
             isActive = false;
         };
     }, [showJoinModal, character?.campaigns]);
+
+    useEffect(() => {
+        if (!character || !activeSession?.combat || isDM) {
+            setShowInitiativePrompt(false);
+            return;
+        }
+
+        const participant = activeSession.combat.participants.find((p) => p.id === character.id);
+        const needsInitiativeRoll = activeSession.combat.phase === 'setup' && !!participant && (participant.initiative || 0) <= 0;
+        setShowInitiativePrompt(needsInitiativeRoll);
+    }, [activeSession?.combat, character, isDM]);
 
   const isReadOnly = (character && user) 
       ? (user.uid !== character.userId && character.type !== 'demon') 
@@ -618,6 +631,52 @@ export function CharacterSheet() {
                         });
                     }
                     setActiveHealthRoll(null);
+                }}
+            />
+        )}
+
+        {showInitiativePrompt && !activeInitiativeRoll && (
+            <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 w-full max-w-sm shadow-2xl border border-transparent dark:border-slate-700 text-center">
+                    <h3 className="font-bold text-xl text-gray-900 dark:text-gray-100 mb-2">Roll Initiative</h3>
+                    <p className="text-sm text-gray-500 dark:text-slate-400 mb-4">
+                        Combat started. Roll your initiative and the DM will see your result.
+                    </p>
+                    <div className="rounded-xl border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 p-3 mb-4">
+                        <div className="text-xs uppercase font-bold text-gray-400">Initiative Bonus</div>
+                        <div className="text-2xl font-black text-slayer-orange mt-1">
+                            {(character.customInitiative ?? Calculator.getModifier(character.dexterity)) >= 0 ? '+' : ''}
+                            {character.customInitiative ?? Calculator.getModifier(character.dexterity)}
+                        </div>
+                    </div>
+                    <button
+                        onClick={() => setActiveInitiativeRoll({ modifier: character.customInitiative ?? Calculator.getModifier(character.dexterity) })}
+                        className="w-full py-3 rounded-xl bg-slayer-orange text-white font-bold shadow-lg shadow-orange-200"
+                    >
+                        Roll Initiative
+                    </button>
+                </div>
+            </div>
+        )}
+
+        {activeInitiativeRoll && character.activeSessionCode && character.id && (
+            <DiceRollerOverlay
+                mode="normal"
+                modifier={activeInitiativeRoll.modifier}
+                label="Initiative"
+                onComplete={async (total) => {
+                    if (total !== undefined) {
+                        try {
+                            await GameService.updateInitiative(character.activeSessionCode!, character.id!, total);
+                            appendRollLog("Initiative", "1d20 + INIT", total);
+                            showToast(`Initiative submitted: ${total}`, "success");
+                            setShowInitiativePrompt(false);
+                        } catch (error) {
+                            console.error("Failed to submit initiative", error);
+                            showToast("Failed to submit initiative", "error");
+                        }
+                    }
+                    setActiveInitiativeRoll(null);
                 }}
             />
         )}

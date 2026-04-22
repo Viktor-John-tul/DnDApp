@@ -83,6 +83,7 @@ export function CombatTab({ character, onUpdate, readOnly, isDM, session, onRoll
     const isCombatActive = Boolean(combat?.isActive);
     const isMyTurn = isCombatActive && combat?.participants[combat.currentTurnIndex]?.id === character.id;
     const MAX_ACTIONS = isSlayer && character.level >= 12 ? 3 : 2;
+    const actionStateKey = `combat-action-state:${character.id || 'unknown'}:${session?.code || 'no-session'}`;
 
   // Helper: Status Effects
   const removeEffect = (id: string) => {
@@ -581,7 +582,7 @@ export function CombatTab({ character, onUpdate, readOnly, isDM, session, onRoll
             setFreeFormUsedThisTurn(false);
             setBladeMemoryUsedThisTurn(false);
     }
-  }, [isMyTurn]);
+    }, [combat?.currentTurnIndex, combat?.round, isMyTurn]);
 
     useEffect(() => {
         if (!combat?.isActive) {
@@ -605,8 +606,12 @@ export function CombatTab({ character, onUpdate, readOnly, isDM, session, onRoll
       activeBuffRoundsRemaining: Math.max(0, (buff.activeBuffRoundsRemaining || 0) - 1)
     })).filter(buff => (buff.activeBuffRoundsRemaining || 0) > 0);
 
-    // Only update if something changed
-    if (updatedBuffs.length !== activeBuffs.filter(b => (b.activeBuffRoundsRemaining || 0) > 0).length) {
+        const hasRoundChange = activeBuffs.some((buff, index) => {
+            const nextBuff = updatedBuffs[index];
+            return !nextBuff || nextBuff.activeBuffRoundsRemaining !== buff.activeBuffRoundsRemaining;
+        });
+
+        if (hasRoundChange || updatedBuffs.length !== activeBuffs.length) {
       onUpdate({ activeBuffs: updatedBuffs });
     }
   }, [combat?.round]);
@@ -634,6 +639,46 @@ export function CombatTab({ character, onUpdate, readOnly, isDM, session, onRoll
     if (type === 'main') setActionsUsed(prev => prev + 1);
     if (type === 'bonus') setBonusUsed(true);
   };
+
+    useEffect(() => {
+        if (!isCombatActive || !isMyTurn) return;
+
+        try {
+            const raw = sessionStorage.getItem(actionStateKey);
+            if (!raw) return;
+
+            const parsed = JSON.parse(raw) as {
+                round: number;
+                turnIndex: number;
+                actionsUsed: number;
+                bonusUsed: boolean;
+                freeFormUsedThisTurn: boolean;
+                bladeMemoryUsedThisTurn: boolean;
+            };
+
+            if (parsed.round === combat?.round && parsed.turnIndex === combat?.currentTurnIndex) {
+                setActionsUsed(parsed.actionsUsed || 0);
+                setBonusUsed(Boolean(parsed.bonusUsed));
+                setFreeFormUsedThisTurn(Boolean(parsed.freeFormUsedThisTurn));
+                setBladeMemoryUsedThisTurn(Boolean(parsed.bladeMemoryUsedThisTurn));
+            }
+        } catch {
+            // Ignore malformed cached state.
+        }
+    }, [actionStateKey, combat?.currentTurnIndex, combat?.round, isCombatActive, isMyTurn]);
+
+    useEffect(() => {
+        if (!isCombatActive || !isMyTurn) return;
+
+        sessionStorage.setItem(actionStateKey, JSON.stringify({
+            round: combat?.round || 0,
+            turnIndex: combat?.currentTurnIndex || 0,
+            actionsUsed,
+            bonusUsed,
+            freeFormUsedThisTurn,
+            bladeMemoryUsedThisTurn,
+        }));
+    }, [actionStateKey, actionsUsed, bladeMemoryUsedThisTurn, bonusUsed, combat?.currentTurnIndex, combat?.round, freeFormUsedThisTurn, isCombatActive, isMyTurn]);
 
   return (
     <div className="space-y-6 pb-24">
@@ -1015,6 +1060,10 @@ export function CombatTab({ character, onUpdate, readOnly, isDM, session, onRoll
              <button 
                 onClick={() => {
                     if (readOnly) return;
+                    if (isCombatActive && !canUseAction('main')) {
+                        showToast("No actions remaining!", "error");
+                        return;
+                    }
                 
                 // Determine roll mode
                 const rollMode = getAttackRollMode();
@@ -1025,6 +1074,10 @@ export function CombatTab({ character, onUpdate, readOnly, isDM, session, onRoll
                     mode: rollMode,
                     isAttack: true
                 });
+
+                if (isCombatActive && isMyTurn) {
+                    useAction('main');
+                }
             }}
             disabled={readOnly}
             className={`w-full p-4 rounded-xl shadow-sm border border-gray-100 flex justify-between items-center ${readOnly ? 'bg-gray-50 opacity-50 cursor-not-allowed' : 'bg-white active:bg-gray-50'}`}
@@ -1045,6 +1098,10 @@ export function CombatTab({ character, onUpdate, readOnly, isDM, session, onRoll
                     readOnly={readOnly}
                     onRoll={(a) => {
                         if (!a.rollMode || a.rollMode === 'utility') return;
+                        if (isCombatActive && !canUseAction('main')) {
+                            showToast("No actions remaining!", "error");
+                            return;
+                        }
 
                         if (a.rollMode === 'attack') {
                             setActiveRoll({
@@ -1053,16 +1110,23 @@ export function CombatTab({ character, onUpdate, readOnly, isDM, session, onRoll
                                 mode: getAttackRollMode(),
                                 isAttack: true,
                             });
+                            if (isCombatActive && isMyTurn) {
+                                useAction('main');
+                            }
                             return;
                         }
 
                         setActiveRoll({
                             label: `${a.name} (Damage)`,
+                            mode: 'normal',
                             modifier: 0,
                             isDamage: true,
                             diceCount: a.diceCount || 1,
                             diceFace: a.diceFace || 6,
                         });
+                        if (isCombatActive && isMyTurn) {
+                            useAction('main');
+                        }
                     }}
                     onEdit={(a) => !readOnly && setEditingAction({ action: a })}
                  />
@@ -1108,6 +1172,10 @@ export function CombatTab({ character, onUpdate, readOnly, isDM, session, onRoll
                 readOnly={readOnly}
                 onRoll={(a) => {
                     if (!a.rollMode || a.rollMode === 'utility') return;
+                    if (isCombatActive && !canUseAction('bonus')) {
+                        showToast("Bonus action already used!", "error");
+                        return;
+                    }
                     if (a.rollMode === 'attack') {
                         setActiveRoll({
                             label: `${a.name} (Attack)`,
@@ -1115,15 +1183,22 @@ export function CombatTab({ character, onUpdate, readOnly, isDM, session, onRoll
                             mode: getAttackRollMode(),
                             isAttack: true,
                         });
+                        if (isCombatActive && isMyTurn) {
+                            useAction('bonus');
+                        }
                         return;
                     }
                     setActiveRoll({
                         label: `${a.name} (Damage)`,
+                        mode: 'normal',
                         modifier: 0,
                         isDamage: true,
                         diceCount: a.diceCount || 1,
                         diceFace: a.diceFace || 6,
                     });
+                    if (isCombatActive && isMyTurn) {
+                        useAction('bonus');
+                    }
                 }}
                 onEdit={(a) => !readOnly && setEditingAction({ action: a })}
                 />
@@ -1164,6 +1239,7 @@ export function CombatTab({ character, onUpdate, readOnly, isDM, session, onRoll
                         }
                         setActiveRoll({
                             label: `${a.name} (Damage)`,
+                            mode: 'normal',
                             modifier: 0,
                             isDamage: true,
                             diceCount: a.diceCount || 1,
@@ -1209,6 +1285,7 @@ export function CombatTab({ character, onUpdate, readOnly, isDM, session, onRoll
                         }
                         setActiveRoll({
                             label: `${a.name} (Damage)`,
+                            mode: 'normal',
                             modifier: 0,
                             isDamage: true,
                             diceCount: a.diceCount || 1,

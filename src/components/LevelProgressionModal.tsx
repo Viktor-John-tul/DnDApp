@@ -55,6 +55,7 @@ export function LevelProgressionModal({ character, mode, onClose, onApply }: Pro
   };
 
   const handleApply = () => {
+    const spentPoints = Math.max(0, availablePoints - Math.max(0, remainingPoints));
     const maxHP = character.customMaxHP ?? Calculator.getMaxHP(draftStats.constitution, character.level);
     const nextBreaths = isSlayer ? getSlayerMaxBreaths(character.level) : character.maxBreaths;
 
@@ -69,7 +70,7 @@ export function LevelProgressionModal({ character, mode, onClose, onApply }: Pro
       maxHP,
       currentBreaths: nextBreaths,
       maxBreaths: nextBreaths,
-      unspentLevelPoints: 0,
+      unspentLevelPoints: Math.max(0, (character.unspentLevelPoints || 0) - spentPoints),
     });
 
     onClose();
@@ -167,10 +168,10 @@ export function LevelProgressionModal({ character, mode, onClose, onApply }: Pro
 
               <button
                 onClick={handleApply}
-                disabled={remainingPoints !== 0}
+                disabled={remainingPoints < 0}
                 className="w-full rounded-2xl bg-slayer-orange text-white font-bold py-4 shadow-lg shadow-orange-200 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Save Level Up
+                Save Progress
               </button>
             </div>
           )}

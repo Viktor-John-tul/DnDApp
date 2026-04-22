@@ -214,8 +214,15 @@ export function DMView() {
               await CharacterService.update(charId, { inventory: [...currentInv, newItem] });
           });
 
-          await Promise.all(promises);
-          showToast(`Given ${newItemParams.name} to ${targetIds.size} players.`, 'success');
+          const results = await Promise.allSettled(promises);
+          const successCount = results.filter(result => result.status === 'fulfilled').length;
+
+          if (successCount > 0) {
+              showToast(`Given ${newItemParams.name} to ${successCount} player(s).`, 'success');
+          } else {
+              showToast("Error giving items", 'error');
+          }
+
           setNewItemParams({ name: "", quantity: 1, weight: 0 });
           setTargetIds(new Set()); 
       } catch (error) {
@@ -244,8 +251,15 @@ export function DMView() {
             await CharacterService.update(charId, { gold: Math.max(0, currentGold + goldAmount) });
         });
 
-        await Promise.all(promises);
-        showToast(`Transferred ${goldAmount} Gold to ${targetIds.size} players.`, 'success');
+        const results = await Promise.allSettled(promises);
+        const successCount = results.filter(result => result.status === 'fulfilled').length;
+
+        if (successCount > 0) {
+            showToast(`Transferred ${goldAmount} Gold to ${successCount} player(s).`, 'success');
+        } else {
+            showToast("Error transferring gold", 'error');
+        }
+
         setGoldAmount(0);
         setTargetIds(new Set());
     } catch (error) {
@@ -318,6 +332,7 @@ export function DMView() {
       if (!isConfirmed) return;
 
       try {
+          const leveledIds = new Set<string>();
           const promises = Array.from(targetIds).map(async (charId) => {
               const char = await CharacterService.get(charId);
               if (!char) return;
@@ -342,12 +357,42 @@ export function DMView() {
 
               await CharacterService.update(charId, levelUpUpdates);
               if (sessionCode) {
-                  await GameService.syncCharacter(sessionCode, { ...char, ...levelUpUpdates });
+                  try {
+                      await GameService.syncCharacter(sessionCode, { ...char, ...levelUpUpdates });
+                  } catch {
+                      // Character sheet data was updated successfully; sync can retry on next write.
+                  }
               }
+
+              leveledIds.add(charId);
           });
 
-          await Promise.all(promises);
-          showToast(`Level granted to ${targetIds.size} player(s).`, 'success');
+          const results = await Promise.allSettled(promises);
+          const successCount = results.filter(result => result.status === 'fulfilled').length;
+
+          if (successCount > 0) {
+              setSession((prev) => {
+                  if (!prev) return prev;
+                  const updatedPlayers = { ...prev.players };
+                  leveledIds.forEach((charId) => {
+                      if (!updatedPlayers[charId]) return;
+                      updatedPlayers[charId] = {
+                          ...updatedPlayers[charId],
+                          level: Math.min(20, (updatedPlayers[charId].level || 1) + 1)
+                      };
+                  });
+
+                  return {
+                      ...prev,
+                      players: updatedPlayers
+                  };
+              });
+
+              showToast(`Level granted to ${successCount} player(s).`, 'success');
+          } else {
+              showToast("Error leveling up players", 'error');
+          }
+
           setTargetIds(new Set());
       } catch (error) {
           console.error("Failed to level up players", error);
@@ -411,12 +456,23 @@ export function DMView() {
               
               await CharacterService.update(charId, { currentHP: newHP });
               if (sessionCode) {
-                  await GameService.syncCharacter(sessionCode, updatedChar);
+                  try {
+                      await GameService.syncCharacter(sessionCode, updatedChar);
+                  } catch {
+                      // HP update is already persisted on character record.
+                  }
               }
           });
 
-          await Promise.all(promises);
-          showToast(`Applied ${isHealing ? 'Healing' : 'Damage'} to ${targetIds.size} players.`, 'success');
+          const results = await Promise.allSettled(promises);
+          const successCount = results.filter(result => result.status === 'fulfilled').length;
+
+          if (successCount > 0) {
+              showToast(`Applied ${isHealing ? 'Healing' : 'Damage'} to ${successCount} player(s).`, 'success');
+          } else {
+              showToast("Error updating HP", 'error');
+          }
+
           setHpAmount(0);
           setTargetIds(new Set());
       } catch (error) {
