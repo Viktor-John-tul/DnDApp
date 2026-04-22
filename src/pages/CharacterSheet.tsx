@@ -195,16 +195,22 @@ export function CharacterSheet() {
     }, [showJoinModal, character?.campaigns]);
 
     useEffect(() => {
-        if (!character || !activeSession?.combat || isDM) {
-            setShowInitiativePrompt(false);
-            return;
-        }
+    if (!character || !activeSession?.combat) {
+      setShowInitiativePrompt(false);
+      return;
+    }
 
-        const participant = activeSession.combat.participants.find((p) => p.id === character.id);
-        const needsInitiativeRoll = activeSession.combat.phase === 'setup' && !!participant && (participant.initiative || 0) <= 0;
-        setShowInitiativePrompt(needsInitiativeRoll);
-    }, [activeSession?.combat, character, isDM]);
+    const candidateIds = [character.id, id].filter(Boolean) as string[];
+    const participant = activeSession.combat.participants.find((p) => candidateIds.includes(p.id));
 
+    const needsInitiativeRoll =
+      activeSession.combat.phase === 'setup' &&
+      !!participant &&
+      participant.type === 'player' &&
+      (participant.initiative || 0) <= 0;
+
+    setShowInitiativePrompt(needsInitiativeRoll);
+  }, [activeSession?.combat, character, id]);
   const isReadOnly = (character && user) 
       ? (user.uid !== character.userId && character.type !== 'demon') 
       : true;
