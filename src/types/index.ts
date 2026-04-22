@@ -63,6 +63,9 @@ export interface CombatAction {
   name: string;
   description: string;
   type: ActionType;
+  diceCount?: number;
+  diceFace?: number;
+  rollMode?: 'attack' | 'damage' | 'utility';
 }
 
 export interface CampaignMembership {

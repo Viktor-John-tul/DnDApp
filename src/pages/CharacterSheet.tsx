@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useLocation, useParams, useNavigate } from "react-router-dom";
 import { CharacterService } from "../services/characterService";
 import { CampaignService } from "../services/campaignService";
 import type { Campaign, DiceRollLog, RPGCharacter } from "../types";
@@ -24,6 +24,7 @@ type TabId = 'stats' | 'combat' | 'inventory' | 'bio' | 'logs';
 export function CharacterSheet() {
   const { id } = useParams();
   const navigate = useNavigate();
+    const location = useLocation();
   const { user } = useAuth();
   const { showToast } = useToast();
   
@@ -74,7 +75,7 @@ export function CharacterSheet() {
       if (!character) return;
       
       const prev = prevCharacterRef.current;
-      if (prev) {
+    if (prev && user?.uid === character.userId) {
           // Check for received items (From DM)
           if (character.inventory.length > prev.inventory.length) {
               const newItems = character.inventory.filter(item => 
@@ -112,7 +113,7 @@ export function CharacterSheet() {
       }
       
       prevCharacterRef.current = character;
-  }, [character]);
+    }, [character, showToast, user?.uid]);
 
   useEffect(() => {
     if (!id || !user) return;
@@ -326,17 +327,20 @@ export function CharacterSheet() {
   };
 
     return (
-        <div className="bg-gray-50 min-h-[100dvh] w-full flex flex-col overflow-hidden relative">
+        <div className="bg-gray-50 dark:bg-slate-950 min-h-[100dvh] w-full flex flex-col overflow-hidden relative transition-colors">
         
         {character.currentHP <= 0 && (
             <DeathScreen character={character} onUpdate={handleUpdate} />
         )}
 
         {/* Header */}
-        <header className="bg-white border-b border-gray-100 px-4 md:px-6 lg:px-8 py-3 flex items-center gap-3 sticky top-0 z-30 shadow-sm">
+        <header className="bg-white dark:bg-slate-900 border-b border-gray-100 dark:border-slate-700 px-4 md:px-6 lg:px-8 py-3 flex items-center gap-3 sticky top-0 z-30 shadow-sm">
             <button 
-                onClick={() => navigate('/')}
-                className="p-1 -ml-2 rounded-full active:bg-gray-100 text-gray-500"
+                onClick={() => {
+                    const fromState = (location.state as { from?: string } | null)?.from;
+                    navigate(fromState || '/');
+                }}
+                className="p-1 -ml-2 rounded-full active:bg-gray-100 dark:active:bg-slate-800 text-gray-500 dark:text-slate-300"
             >
                 <ChevronLeft size={24} />
             </button>
@@ -362,7 +366,7 @@ export function CharacterSheet() {
         {/* Responsive Sheet Layout */}
         <div className="flex-1 min-h-0 md:grid md:grid-cols-[220px_minmax(0,1fr)]">
             {/* Tablet/Desktop Side Navigation */}
-            <aside className="hidden md:flex md:flex-col md:gap-2 bg-white border-r border-gray-200 p-3 lg:p-4">
+            <aside className="hidden md:flex md:flex-col md:gap-2 bg-white dark:bg-slate-900 border-r border-gray-200 dark:border-slate-700 p-3 lg:p-4">
                 <TabButton
                     active={activeTab === 'stats'}
                     onClick={() => setActiveTab('stats')}
@@ -411,7 +415,7 @@ export function CharacterSheet() {
         </div>
 
         {/* Mobile Bottom Navigation */}
-        <nav className="md:hidden bg-white border-t border-gray-200 px-4 py-2 pb-6 z-30 sticky bottom-0 flex justify-between items-center">
+        <nav className="md:hidden bg-white dark:bg-slate-900 border-t border-gray-200 dark:border-slate-700 px-4 py-2 pb-6 z-30 sticky bottom-0 flex justify-between items-center">
             <TabButton 
                 active={activeTab === 'stats'} 
                 onClick={() => setActiveTab('stats')} 
@@ -496,12 +500,12 @@ export function CharacterSheet() {
 
         {showFreeRollModal && (
             <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-                <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl">
+                <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 w-full max-w-sm shadow-2xl border border-transparent dark:border-slate-700">
                     <div className="flex items-center justify-between mb-4">
                         <h3 className="font-bold text-lg text-gray-900">Free Dice Roll</h3>
                         <button
                             onClick={() => setShowFreeRollModal(false)}
-                            className="text-gray-400 hover:text-gray-600"
+                            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
                         >
                             <X size={22} />
                         </button>
@@ -557,7 +561,7 @@ export function CharacterSheet() {
                             </div>
                         </div>
 
-                        <div className="rounded-xl border border-gray-200 bg-gray-50 p-3 text-center">
+                        <div className="rounded-xl border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 p-3 text-center">
                             <div className="text-xs uppercase font-bold text-gray-400">Ready Roll</div>
                             <div className="text-2xl font-black text-slayer-orange mt-1">{freeRollCount}d{freeRollFace}</div>
                         </div>
@@ -629,7 +633,7 @@ export function CharacterSheet() {
 
                 {showJoinModal && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-                        <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl">
+                        <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 w-full max-w-sm shadow-2xl border border-transparent dark:border-slate-700">
                             <h3 className="font-bold text-lg mb-4">Campaigns</h3>
 
                             {character.activeSessionCode && (
@@ -680,7 +684,7 @@ export function CharacterSheet() {
                                 )}
                             </div>
 
-                            <div className="border-t border-gray-100 pt-4">
+                            <div className="border-t border-gray-100 dark:border-slate-700 pt-4">
                                 <h4 className="text-sm font-bold mb-2">Join Campaign</h4>
                                 <input
                                     autoFocus

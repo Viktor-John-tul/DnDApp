@@ -21,6 +21,9 @@ export function CombatActionEditorModal({ action, initialType = 'main', onSave, 
     const [name, setName] = React.useState(action?.name || "");
     const [description, setDescription] = React.useState(action?.description || "");
     const [type, setType] = React.useState<ActionType>(action?.type || initialType);
+    const [rollMode, setRollMode] = React.useState<'attack' | 'damage' | 'utility'>(action?.rollMode || 'utility');
+    const [diceCount, setDiceCount] = React.useState<number>(action?.diceCount || 1);
+    const [diceFace, setDiceFace] = React.useState<number>(action?.diceFace || 6);
 
     const handleSave = () => {
         if (!name.trim()) return;
@@ -29,7 +32,10 @@ export function CombatActionEditorModal({ action, initialType = 'main', onSave, 
             id: action?.id || crypto.randomUUID(),
             name,
             description,
-            type
+            type,
+            rollMode,
+            diceCount: rollMode === 'utility' ? undefined : Math.max(1, diceCount),
+            diceFace: rollMode === 'utility' ? undefined : diceFace
         });
         onClose();
     };
@@ -76,6 +82,50 @@ export function CombatActionEditorModal({ action, initialType = 'main', onSave, 
                                 </button>
                             ))}
                         </div>
+                    </div>
+
+                    <div>
+                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Roll Setup</label>
+                        <div className="grid grid-cols-3 gap-2 mb-3">
+                            {(['utility', 'attack', 'damage'] as const).map((mode) => (
+                                <button
+                                    key={mode}
+                                    onClick={() => setRollMode(mode)}
+                                    className={`p-2 rounded-lg border text-xs font-bold uppercase transition-all ${
+                                        rollMode === mode
+                                            ? 'bg-slayer-orange/5 border-slayer-orange text-slayer-orange'
+                                            : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'
+                                    }`}
+                                >
+                                    {mode}
+                                </button>
+                            ))}
+                        </div>
+
+                        {rollMode !== 'utility' && (
+                            <div className="grid grid-cols-2 gap-2">
+                                <input
+                                    type="number"
+                                    min={1}
+                                    value={diceCount}
+                                    onChange={(e) => setDiceCount(Math.max(1, parseInt(e.target.value) || 1))}
+                                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-center"
+                                    placeholder="Count"
+                                />
+                                <select
+                                    value={diceFace}
+                                    onChange={(e) => setDiceFace(parseInt(e.target.value))}
+                                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold"
+                                >
+                                    <option value={4}>d4</option>
+                                    <option value={6}>d6</option>
+                                    <option value={8}>d8</option>
+                                    <option value={10}>d10</option>
+                                    <option value={12}>d12</option>
+                                    <option value={20}>d20</option>
+                                </select>
+                            </div>
+                        )}
                     </div>
 
                     <div>

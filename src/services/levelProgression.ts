@@ -24,10 +24,6 @@ function isSlayerLike(characterType?: CharacterType) {
 export function getAttributePointGainAtLevel(level: number, characterType?: CharacterType) {
   const slayerLike = isSlayerLike(characterType);
 
-  if (slayerLike && level === 2) {
-    return 8;
-  }
-
   if (!slayerLike && level === 1) {
     return 8;
   }
@@ -108,8 +104,6 @@ export function getLevelProgressionEntries(characterType?: CharacterType): Level
     if (level === 1) {
       details.push("Base attributes: STR 14, DEX 14, CON 13, WIS 12, INT 10, CHA 10.");
       details.push("+8 free points at creation.");
-    } else if (gain === 8) {
-      details.push("+8 free points (max 17).");
     } else if (gain === 2) {
       details.push("+2 attribute points (or split +1/+1).");
     } else {

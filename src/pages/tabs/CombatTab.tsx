@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Swords, Wind, Zap, AlertTriangle, Plus, Minus, ShieldAlert, X, Heart, Shield, ArrowUp, ArrowDown, Clock, Lock, SkipForward } from 'lucide-react';
+import { Swords, Wind, Zap, ZapOff, AlertTriangle, Plus, Minus, ShieldAlert, X, Heart, Shield, ArrowUp, ArrowDown, Clock, Lock, SkipForward } from 'lucide-react';
 import type { RPGCharacter, BreathingForm, CombatAction } from '../../types';
 import type { GameSession } from '../../services/gameService';
 import { Calculator } from '../../services/rules';
@@ -47,7 +47,7 @@ export function CombatTab({ character, onUpdate, readOnly, isDM, session, onRoll
   // Action Economy State
   const [actionsUsed, setActionsUsed] = useState(0);
   const [bonusUsed, setBonusUsed] = useState(false);
-    const [freeFormUsedThisTurn, setFreeFormUsedThisTurn] = useState(false);
+        const [freeFormUsedThisTurn, setFreeFormUsedThisTurn] = useState(false);
     const [bladeMemoryUsedThisTurn, setBladeMemoryUsedThisTurn] = useState(false);
     const [usedFormsThisCombat, setUsedFormsThisCombat] = useState<Set<string>>(new Set());
     const [controlledBreathingUsed, setControlledBreathingUsed] = useState(false);
@@ -91,6 +91,27 @@ export function CombatTab({ character, onUpdate, readOnly, isDM, session, onRoll
   
   // Helper to determine best attack mod (Str vs Dex) - simplified
   const attackMod = Math.max(strMod, dexMod); 
+
+    const hasActiveAdvantageBuff = () => {
+        const fromLegacyBuff = Boolean(
+            character.activeBuff?.isAdvantageBuff && (character.activeBuff.activeBuffRoundsRemaining || 0) > 0
+        );
+        const fromBuffStack = (character.activeBuffs || []).some(
+            (buff) => Boolean(buff.isAdvantageBuff) && (buff.activeBuffRoundsRemaining || 0) > 0
+        );
+        return fromLegacyBuff || fromBuffStack;
+    };
+
+    const getAttackRollMode = (): 'normal' | 'advantage' | 'disadvantage' => {
+        const hasEffectAdvantage = character.statusEffects?.some((e) => e.type === 'advantage');
+        const hasEffectDisadvantage = character.statusEffects?.some((e) => e.type === 'disadvantage');
+        const hasAdv = hasActiveAdvantageBuff() || hasEffectAdvantage;
+        const hasDis = isEncumbered || hasEffectDisadvantage;
+
+        if (hasAdv && !hasDis) return 'advantage';
+        if (!hasAdv && hasDis) return 'disadvantage';
+        return 'normal';
+    };
 
   const handleBreathRecovery = () => {
     // Check bonus action economy in combat
@@ -142,12 +163,12 @@ export function CombatTab({ character, onUpdate, readOnly, isDM, session, onRoll
             return;
         }
 
-        const canFreeForm = isSlayer && character.level >= 2 && isCombatActive && isMyTurn && !freeFormUsedThisTurn;
+        const canFreeForm = isSlayer && character.level >= 2 && formNumber === 1 && isCombatActive && isMyTurn && !freeFormUsedThisTurn;
         const canBladeMemory = isSlayer && character.level >= 12 && isCombatActive && isMyTurn && !bladeMemoryUsedThisTurn;
         const bladeMemoryApplies = canBladeMemory && usedFormsThisCombat.has(form.id);
 
         const baseCost = isDemon
-            ? (form.spCost || 0)
+            ? 0
             : getSlayerFormCost(character.level, formNumber, bladeMemoryApplies && !canFreeForm);
         const cost = canFreeForm ? 0 : baseCost;
         const nextBreaths = character.currentBreaths - cost;
@@ -183,16 +204,7 @@ export function CombatTab({ character, onUpdate, readOnly, isDM, session, onRoll
     onUpdate({ currentBreaths: newBreaths });
     
     // Determine roll mode
-    const hasAdvantageBuff = character.activeBuff?.isAdvantageBuff && (character.activeBuff.activeBuffRoundsRemaining || 0) > 0;
-    const hasEffectAdvantage = character.statusEffects?.some(e => e.type === 'advantage');
-    const hasEffectDisadvantage = character.statusEffects?.some(e => e.type === 'disadvantage');
-
-    const hasAdv = hasAdvantageBuff || hasEffectAdvantage;
-    const hasDis = isEncumbered || hasEffectDisadvantage;
-    
-    let rollMode: 'normal' | 'advantage' | 'disadvantage' = 'normal';
-    if (hasAdv && !hasDis) rollMode = 'advantage';
-    else if (!hasAdv && hasDis) rollMode = 'disadvantage';
+    const rollMode = getAttackRollMode();
 
     // Check if form requires attack roll
     if (form.requiresAttackRoll) {
@@ -397,11 +409,7 @@ export function CombatTab({ character, onUpdate, readOnly, isDM, session, onRoll
              if (activeRoll.pendingForm) {
                  const form = activeRoll.pendingForm;
                  setTimeout(() => {
-                     const hasAdvantageBuff = character.activeBuff?.isAdvantageBuff && (character.activeBuff.activeBuffRoundsRemaining || 0) > 0;
-                     let rollMode: 'normal'|'advantage'|'disadvantage' = 'normal';
-                     if (isEncumbered && !hasAdvantageBuff) rollMode = 'disadvantage';
-                     else if (!isEncumbered && hasAdvantageBuff) rollMode = 'advantage';
-                     else if (isEncumbered && hasAdvantageBuff) rollMode = 'normal';
+                     const rollMode = getAttackRollMode();
 
                      setActiveRoll({
                          label: `${form.name} (Attack)`,
@@ -445,11 +453,7 @@ export function CombatTab({ character, onUpdate, readOnly, isDM, session, onRoll
                 // Determine roll mode again for this specific attack
                 // We likely need to duplicate logic or pass it. 
                 // Simplified: recalculate based on current state (encumbrance/buffs unchanged in 300ms)
-                const hasAdvantageBuff = character.activeBuff?.isAdvantageBuff && (character.activeBuff.activeBuffRoundsRemaining || 0) > 0;
-                let rollMode: 'normal'|'advantage'|'disadvantage' = 'normal';
-                if (isEncumbered && !hasAdvantageBuff) rollMode = 'disadvantage';
-                else if (!isEncumbered && hasAdvantageBuff) rollMode = 'advantage';
-                else if (isEncumbered && hasAdvantageBuff) rollMode = 'normal';
+                const rollMode = getAttackRollMode();
 
                 setActiveRoll({
                     label: `${form.name} (Attack)`,
@@ -526,11 +530,7 @@ export function CombatTab({ character, onUpdate, readOnly, isDM, session, onRoll
                 
                 setTimeout(() => {
                     // Re-evaluate mode
-                    const hasAdvantageBuff = character.activeBuff?.isAdvantageBuff && (character.activeBuff.activeBuffRoundsRemaining || 0) > 0;
-                    let rollMode: 'normal'|'advantage'|'disadvantage' = 'normal';
-                    if (isEncumbered && !hasAdvantageBuff) rollMode = 'disadvantage';
-                    else if (!isEncumbered && hasAdvantageBuff) rollMode = 'advantage';
-                    else if (isEncumbered && hasAdvantageBuff) rollMode = 'normal';
+                    const rollMode = getAttackRollMode();
 
                     if (form.requiresAttackRoll) {
                         setActiveRoll({
@@ -877,10 +877,10 @@ export function CombatTab({ character, onUpdate, readOnly, isDM, session, onRoll
         ) : (
             character.breathingForms.map((form, index) => {
                 const formNumber = index + 1;
-                const canFreeForm = isSlayer && character.level >= 2 && isCombatActive && isMyTurn && !freeFormUsedThisTurn;
+                const canFreeForm = isSlayer && character.level >= 2 && formNumber === 1 && isCombatActive && isMyTurn && !freeFormUsedThisTurn;
                 const canBladeMemory = isSlayer && character.level >= 12 && isCombatActive && isMyTurn && !bladeMemoryUsedThisTurn;
                 const bladeMemoryApplies = canBladeMemory && usedFormsThisCombat.has(form.id);
-                const baseCost = isDemon ? form.spCost : getSlayerFormCost(character.level, formNumber, bladeMemoryApplies && !canFreeForm);
+                const baseCost = isDemon ? 0 : getSlayerFormCost(character.level, formNumber, bladeMemoryApplies && !canFreeForm);
                 const cost = canFreeForm ? 0 : baseCost;
                 const canEditForm = !readOnly && canUseForms && (!form.isLocked || isDM);
                 const canUseForm = !readOnly && canUseForms && (!form.isLocked || isDM);
@@ -1017,15 +1017,7 @@ export function CombatTab({ character, onUpdate, readOnly, isDM, session, onRoll
                     if (readOnly) return;
                 
                 // Determine roll mode
-                const hasEffectAdvantage = character.statusEffects?.some(e => e.type === 'advantage');
-                const hasEffectDisadvantage = character.statusEffects?.some(e => e.type === 'disadvantage');
-
-                const hasAdv = hasEffectAdvantage;
-                const hasDis = isEncumbered || hasEffectDisadvantage;
-                
-                let rollMode: 'normal' | 'advantage' | 'disadvantage' = 'normal';
-                if (hasAdv && !hasDis) rollMode = 'advantage';
-                else if (!hasAdv && hasDis) rollMode = 'disadvantage';
+                const rollMode = getAttackRollMode();
                 
                 setActiveRoll({
                     label: "Unarmed Strike", 
@@ -1051,6 +1043,27 @@ export function CombatTab({ character, onUpdate, readOnly, isDM, session, onRoll
                     key={action.id} 
                     action={action} 
                     readOnly={readOnly}
+                    onRoll={(a) => {
+                        if (!a.rollMode || a.rollMode === 'utility') return;
+
+                        if (a.rollMode === 'attack') {
+                            setActiveRoll({
+                                label: `${a.name} (Attack)`,
+                                modifier: attackMod + proficiency,
+                                mode: getAttackRollMode(),
+                                isAttack: true,
+                            });
+                            return;
+                        }
+
+                        setActiveRoll({
+                            label: `${a.name} (Damage)`,
+                            modifier: 0,
+                            isDamage: true,
+                            diceCount: a.diceCount || 1,
+                            diceFace: a.diceFace || 6,
+                        });
+                    }}
                     onEdit={(a) => !readOnly && setEditingAction({ action: a })}
                  />
              ))}
@@ -1093,6 +1106,25 @@ export function CombatTab({ character, onUpdate, readOnly, isDM, session, onRoll
                 key={action.id} 
                 action={action} 
                 readOnly={readOnly}
+                onRoll={(a) => {
+                    if (!a.rollMode || a.rollMode === 'utility') return;
+                    if (a.rollMode === 'attack') {
+                        setActiveRoll({
+                            label: `${a.name} (Attack)`,
+                            modifier: attackMod + proficiency,
+                            mode: getAttackRollMode(),
+                            isAttack: true,
+                        });
+                        return;
+                    }
+                    setActiveRoll({
+                        label: `${a.name} (Damage)`,
+                        modifier: 0,
+                        isDamage: true,
+                        diceCount: a.diceCount || 1,
+                        diceFace: a.diceFace || 6,
+                    });
+                }}
                 onEdit={(a) => !readOnly && setEditingAction({ action: a })}
                 />
             ))}
@@ -1119,6 +1151,25 @@ export function CombatTab({ character, onUpdate, readOnly, isDM, session, onRoll
                     key={action.id} 
                     action={action} 
                     readOnly={readOnly}
+                    onRoll={(a) => {
+                        if (!a.rollMode || a.rollMode === 'utility') return;
+                        if (a.rollMode === 'attack') {
+                            setActiveRoll({
+                                label: `${a.name} (Attack)`,
+                                modifier: attackMod + proficiency,
+                                mode: getAttackRollMode(),
+                                isAttack: true,
+                            });
+                            return;
+                        }
+                        setActiveRoll({
+                            label: `${a.name} (Damage)`,
+                            modifier: 0,
+                            isDamage: true,
+                            diceCount: a.diceCount || 1,
+                            diceFace: a.diceFace || 6,
+                        });
+                    }}
                     onEdit={(a) => !readOnly && setEditingAction({ action: a })}
                  />
              ))}
@@ -1145,6 +1196,25 @@ export function CombatTab({ character, onUpdate, readOnly, isDM, session, onRoll
                     key={action.id} 
                     action={action} 
                     readOnly={readOnly}
+                    onRoll={(a) => {
+                        if (!a.rollMode || a.rollMode === 'utility') return;
+                        if (a.rollMode === 'attack') {
+                            setActiveRoll({
+                                label: `${a.name} (Attack)`,
+                                modifier: attackMod + proficiency,
+                                mode: getAttackRollMode(),
+                                isAttack: true,
+                            });
+                            return;
+                        }
+                        setActiveRoll({
+                            label: `${a.name} (Damage)`,
+                            modifier: 0,
+                            isDamage: true,
+                            diceCount: a.diceCount || 1,
+                            diceFace: a.diceFace || 6,
+                        });
+                    }}
                     onEdit={(a) => !readOnly && setEditingAction({ action: a })}
                  />
              ))}
@@ -1327,8 +1397,7 @@ export function CombatTab({ character, onUpdate, readOnly, isDM, session, onRoll
   );
 }
 
-import { ZapOff } from 'lucide-react';
-function CustomActionRow({ action, readOnly, onEdit }: { action: CombatAction, readOnly?: boolean, onEdit: (a: CombatAction) => void }) {
+function CustomActionRow({ action, readOnly, onEdit, onRoll }: { action: CombatAction, readOnly?: boolean, onEdit: (a: CombatAction) => void, onRoll?: (a: CombatAction) => void }) {
     const icon = {
         main: Swords,
         bonus: Zap,
@@ -1339,20 +1408,30 @@ function CustomActionRow({ action, readOnly, onEdit }: { action: CombatAction, r
     const IconComp = icon;
 
     return (
-        <button 
-            onClick={() => onEdit(action)}
-            disabled={readOnly}
-            className={`w-full p-4 rounded-xl shadow-sm border border-gray-100 flex justify-between items-center group transition-colors text-left ${readOnly ? 'bg-gray-50 opacity-50 cursor-not-allowed' : 'bg-white hover:border-gray-200'}`}
-        >
-            <div className="flex items-center gap-3">
+        <div className={`w-full p-4 rounded-xl shadow-sm border border-gray-100 flex justify-between items-center group transition-colors text-left ${readOnly ? 'bg-gray-50 opacity-50' : 'bg-white hover:border-gray-200'}`}>
+            <button className="flex items-center gap-3 text-left" onClick={() => onEdit(action)} disabled={readOnly}>
                 <div className="bg-gray-50 p-2 rounded-lg text-gray-400 group-hover:text-slayer-orange transition-colors">
                     <IconComp size={18} />
                 </div>
                 <div>
                     <span className="font-bold text-sm text-gray-700 block">{action.name}</span>
                     <span className="text-xs text-gray-400 block line-clamp-1">{action.description}</span>
+                    {action.rollMode && action.rollMode !== 'utility' && action.diceCount && action.diceFace && (
+                        <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wide block mt-1">
+                            {action.rollMode} • {action.diceCount}d{action.diceFace}
+                        </span>
+                    )}
                 </div>
-            </div>
-        </button>
+            </button>
+            {action.rollMode && action.rollMode !== 'utility' && action.diceCount && action.diceFace && !readOnly && (
+                <button
+                    onClick={() => onRoll?.(action)}
+                    className="text-xs px-3 py-1.5 rounded-lg bg-slayer-orange text-white font-bold hover:bg-orange-600 transition-colors"
+                >
+                    Roll
+                </button>
+            )}
+            {(readOnly || !action.rollMode || action.rollMode === 'utility') && <div />}
+        </div>
     );
 }

@@ -92,7 +92,7 @@ export function BreathingFormEditorModal({ form: initialForm, onSave, onClose, i
                  className={`w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-slayer-orange outline-none ${!isDemon ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : ''}`}
                  placeholder={!isDemon ? "Calculated automatically" : "Enter Cost"}
               />
-              {!isDemon && <p className="text-[10px] text-gray-400 mt-1">Cost = Form Number × 3</p>}
+              {!isDemon && <p className="text-[10px] text-gray-400 mt-1">Cost follows progression table (1st: 8, 2nd: 12, 3rd: 16, ...)</p>}
             </div>
           </div>
 

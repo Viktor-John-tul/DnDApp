@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../context/ToastContext";
 import { useConfirm } from "../../context/ConfirmContext";
@@ -30,6 +30,7 @@ export function DMView() {
   const { confirm } = useConfirm();
   const { user } = useAuth();
   const navigate = useNavigate();
+    const location = useLocation();
     const { campaignId } = useParams();
     const [campaign, setCampaign] = useState<Campaign | null>(null);
   const [sessionCode, setSessionCode] = useState<string | null>(null);
@@ -44,7 +45,14 @@ export function DMView() {
     const [activeTool, setActiveTool] = useState<'effects' | 'items' | 'gold' | 'notes' | 'health' | 'actions' | 'forms' | 'combat' | 'levels'>('combat');
 
   // Action Adding State
-  const [newActionParams, setNewActionParams] = useState({ name: "", description: "", type: "main" as 'main' | 'bonus' | 'reaction' | 'free' });
+    const [newActionParams, setNewActionParams] = useState({
+        name: "",
+        description: "",
+        type: "main" as 'main' | 'bonus' | 'reaction' | 'free',
+        rollMode: 'utility' as 'attack' | 'damage' | 'utility',
+        diceCount: 1,
+        diceFace: 6
+    });
 
   // Item Adding State
   const [newItemParams, setNewItemParams] = useState({ name: "", quantity: 1, weight: 0 });
@@ -277,7 +285,12 @@ export function DMView() {
 
               const newAction = {
                   id: crypto.randomUUID(),
-                  ...newActionParams
+                  name: newActionParams.name,
+                  description: newActionParams.description,
+                  type: newActionParams.type,
+                  rollMode: newActionParams.rollMode,
+                  diceCount: newActionParams.rollMode === 'utility' ? undefined : newActionParams.diceCount,
+                  diceFace: newActionParams.rollMode === 'utility' ? undefined : newActionParams.diceFace
               };
               
               const currentActions = char.customActions || [];
@@ -286,7 +299,7 @@ export function DMView() {
 
           await Promise.all(promises);
           showToast(`Added action to ${targetIds.size} players.`, 'success');
-          setNewActionParams({ name: "", description: "", type: "main" });
+          setNewActionParams({ name: "", description: "", type: "main", rollMode: 'utility', diceCount: 1, diceFace: 6 });
           setTargetIds(new Set());
       } catch (error) {
           showToast("Error adding action", 'error');
@@ -762,6 +775,53 @@ export function DMView() {
                                         ))}
                                     </div>
                                 </div>
+                                <div>
+                                    <label className="text-[10px] uppercase font-bold text-gray-400 mb-1 block">Roll Type</label>
+                                    <div className="grid grid-cols-3 gap-2">
+                                        {(['utility', 'attack', 'damage'] as const).map(mode => (
+                                            <button
+                                                key={mode}
+                                                onClick={() => setNewActionParams({...newActionParams, rollMode: mode})}
+                                                className={`p-2 text-xs font-bold uppercase rounded-lg border ${
+                                                    newActionParams.rollMode === mode
+                                                    ? 'bg-indigo-50 border-indigo-200 text-indigo-600 ring-1 ring-indigo-200'
+                                                    : 'bg-gray-50 border-gray-200 text-gray-400 hover:bg-gray-100'
+                                                }`}
+                                            >
+                                                {mode}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                                {newActionParams.rollMode !== 'utility' && (
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label className="text-[10px] uppercase font-bold text-gray-400 mb-1 block">Dice Count</label>
+                                            <input
+                                                type="number"
+                                                min={1}
+                                                value={newActionParams.diceCount}
+                                                onChange={e => setNewActionParams({...newActionParams, diceCount: Math.max(1, parseInt(e.target.value) || 1)})}
+                                                className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg font-medium text-center outline-none focus:ring-2 ring-indigo-100"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] uppercase font-bold text-gray-400 mb-1 block">Dice Type</label>
+                                            <select
+                                                value={newActionParams.diceFace}
+                                                onChange={e => setNewActionParams({...newActionParams, diceFace: parseInt(e.target.value)})}
+                                                className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg font-medium text-center outline-none focus:ring-2 ring-indigo-100"
+                                            >
+                                                <option value={4}>d4</option>
+                                                <option value={6}>d6</option>
+                                                <option value={8}>d8</option>
+                                                <option value={10}>d10</option>
+                                                <option value={12}>d12</option>
+                                                <option value={20}>d20</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
 
                             <button 
@@ -944,7 +1004,7 @@ export function DMView() {
                          </div>
                          <div className="flex items-center gap-2">
                             <span className="text-xs font-bold bg-gray-200 text-gray-600 px-2 py-1 rounded">Lvl {player.level}</span>
-                            <Link to={`/character/${player.id}`} className="p-1.5 bg-white border border-gray-200 rounded-lg text-gray-400 hover:text-slayer-orange hover:border-slayer-orange transition-colors">
+                            <Link to={`/character/${player.id}`} state={{ from: location.pathname }} className="p-1.5 bg-white border border-gray-200 rounded-lg text-gray-400 hover:text-slayer-orange hover:border-slayer-orange transition-colors">
                                 <ArrowLeft size={14} className="rotate-180" />
                             </Link>
                          </div>
