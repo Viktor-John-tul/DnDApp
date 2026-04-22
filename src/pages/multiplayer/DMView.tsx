@@ -112,6 +112,12 @@ const sanitizeEffectDraft = (effect: ItemEffectDraft): ItemEffect | null => {
     return base;
 };
 
+const compactObject = <T extends object>(value: T): T => {
+    return Object.fromEntries(
+        Object.entries(value).filter(([, entry]) => entry !== undefined)
+    ) as T;
+};
+
 export function DMView() {
   const { showToast } = useToast();
   const { confirm } = useConfirm();
@@ -170,19 +176,18 @@ export function DMView() {
 
             if (data.dmId !== user.uid) {
                 showToast("You do not have access to this campaign", "error");
-                navigate("/dm");
                 return;
             }
 
             setCampaign(data);
             setSessionCode(data.activeSessionCode || null);
         });
-
+        
         return () => unsubscribe();
     }, [campaignId, navigate, showToast, user]);
 
-  // Subscribe to Session
-  useEffect(() => {
+    // Subscribe to Session
+    useEffect(() => {
         if (!sessionCode) {
             setSession(null);
             setLoading(false);
@@ -313,12 +318,16 @@ export function DMView() {
                   weight: newItemParams.weight,
                   source: 'dm',
                   rarity: newItemParams.rarity,
-                  equipped: false,
-                  effects: newItemParams.rarity === 'special' ? sanitizedEffects : undefined
+                  ...(newItemParams.rarity === 'special'
+                      ? {
+                          equipped: false,
+                          effects: sanitizedEffects.map(effect => compactObject(effect))
+                      }
+                      : {})
               };
               
               const currentInv = char.inventory || [];
-              await CharacterService.update(charId, { inventory: [...currentInv, newItem] });
+              await CharacterService.update(charId, { inventory: [...currentInv, compactObject(newItem)] });
           });
 
           const results = await Promise.allSettled(promises);
