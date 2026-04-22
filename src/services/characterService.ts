@@ -17,6 +17,33 @@ import type { RPGCharacter } from "../types";
 const COLLECTION = "characters";
 const MOCK_SUBSCRIBERS = new Set<(char: RPGCharacter | null) => void>();
 
+const isPlainObject = (value: unknown): value is Record<string, unknown> => {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return false;
+  }
+
+  const prototype = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
+};
+
+const stripUndefinedDeep = <T>(value: T): T => {
+  if (Array.isArray(value)) {
+    return value
+      .map((entry) => stripUndefinedDeep(entry))
+      .filter((entry) => entry !== undefined) as T;
+  }
+
+  if (isPlainObject(value)) {
+    return Object.fromEntries(
+      Object.entries(value)
+        .filter(([, entry]) => entry !== undefined)
+        .map(([key, entry]) => [key, stripUndefinedDeep(entry)])
+    ) as T;
+  }
+
+  return value;
+};
+
 const cloneMockCharacter = (): RPGCharacter => JSON.parse(JSON.stringify(MOCK_CHARACTER)) as RPGCharacter;
 
 const notifyMockSubscribers = () => {
@@ -88,8 +115,9 @@ const MOCK_CHARACTER: RPGCharacter = {
 export const CharacterService = {
   async create(character: Omit<RPGCharacter, 'id' | 'createdAt' | 'updatedAt'>) {
     try {
+        const safeCharacter = stripUndefinedDeep(character);
         const docRef = await addDoc(collection(db, COLLECTION), {
-        ...character,
+        ...safeCharacter,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
         });
@@ -136,15 +164,16 @@ export const CharacterService = {
   async update(id: string, updates: Partial<RPGCharacter>) {
     if (id === 'mock_char_1' || id.startsWith('mock_')) {
         // Mock Update
-        Object.assign(MOCK_CHARACTER, updates);
+        Object.assign(MOCK_CHARACTER, stripUndefinedDeep(updates));
       notifyMockSubscribers();
         return;
     }
     
     try {
         const docRef = doc(db, COLLECTION, id);
+        const safeUpdates = stripUndefinedDeep(updates);
         await updateDoc(docRef, {
-        ...updates,
+        ...safeUpdates,
         updatedAt: serverTimestamp()
         });
     } catch (e) {
