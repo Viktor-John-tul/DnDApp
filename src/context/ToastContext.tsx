@@ -44,15 +44,15 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
               className={`pointer-events-auto min-w-[300px] max-w-sm w-full p-4 rounded-xl shadow-2xl backdrop-blur-md border flex items-center gap-3 ${
-                toast.type === 'success' ? 'bg-white/90 border-green-200 text-green-800' :
-                toast.type === 'error' ? 'bg-white/90 border-red-200 text-red-800' :
-                'bg-white/90 border-blue-200 text-blue-800'
+                toast.type === 'success' ? 'bg-white/90 dark:bg-emerald-950/80 border-green-200 dark:border-emerald-800 text-green-800 dark:text-emerald-200' :
+                toast.type === 'error' ? 'bg-white/90 dark:bg-red-950/80 border-red-200 dark:border-red-800 text-red-800 dark:text-red-200' :
+                'bg-white/90 dark:bg-blue-950/80 border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-200'
               }`}
             >
               <div className={`p-1 rounded-full ${
-                  toast.type === 'success' ? 'bg-green-100 text-green-600' :
-                  toast.type === 'error' ? 'bg-red-100 text-red-600' :
-                  'bg-blue-100 text-blue-600'
+                  toast.type === 'success' ? 'bg-green-100 dark:bg-emerald-900 text-green-600 dark:text-emerald-300' :
+                  toast.type === 'error' ? 'bg-red-100 dark:bg-red-900 text-red-600 dark:text-red-300' :
+                  'bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300'
               }`}>
                 {toast.type === 'success' && <CheckCircle size={16} />}
                 {toast.type === 'error' && <AlertCircle size={16} />}
@@ -61,7 +61,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
               <p className="flex-1 text-sm font-bold">{toast.message}</p>
               <button 
                 onClick={() => removeToast(toast.id)}
-                className="text-gray-400 hover:text-gray-600"
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
               >
                 <X size={16} />
               </button>

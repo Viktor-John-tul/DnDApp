@@ -1,9 +1,9 @@
-import { HashRouter, Routes, Route, useLocation } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { HashRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import { ToastProvider } from "./context/ToastContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { ConfirmProvider } from "./context/ConfirmContext";
+import { ThemeProvider } from "./context/ThemeContext";
 import { LoginPage } from "./pages/LoginPage";
 import { Dashboard } from "./pages/Dashboard";
 import { CharacterCreation } from "./pages/CharacterCreation";
@@ -11,58 +11,16 @@ import { DemonCreation } from "./pages/DemonCreation";
 import { CharacterSheet } from "./pages/CharacterSheet";
 import { DMView } from "./pages/multiplayer/DMView";
 import { DMCampaigns } from "./pages/multiplayer/DMCampaigns";
-import { Moon, Sun } from "lucide-react";
-
-const THEME_KEY = "dndapp-theme";
-
-function ThemeToggle({ isDark, onToggle }: { isDark: boolean; onToggle: () => void }) {
-  const location = useLocation();
-  const isCharacterSheet = location.pathname.startsWith("/character/");
-  const positionClass = isCharacterSheet
-    ? "top-20 right-4 md:top-6 md:right-6"
-    : "top-4 right-4";
-
-  return (
-    <button
-      onClick={onToggle}
-      className={`fixed ${positionClass} z-[90] w-11 h-11 rounded-full border border-gray-200 bg-white text-gray-600 flex items-center justify-center shadow-lg hover:scale-105 active:scale-95 transition`}
-      aria-label="Toggle dark mode"
-      title="Toggle dark mode"
-    >
-      {isDark ? <Sun size={18} /> : <Moon size={18} />}
-    </button>
-  );
-}
 
 function App() {
-  const [isDark, setIsDark] = useState(false);
-
-  useEffect(() => {
-    const storedTheme = localStorage.getItem(THEME_KEY);
-    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-    const startDark = storedTheme ? storedTheme === "dark" : prefersDark;
-    setIsDark(startDark);
-  }, []);
-
-  useEffect(() => {
-    const root = document.documentElement;
-    if (isDark) {
-      root.classList.add("dark");
-      localStorage.setItem(THEME_KEY, "dark");
-    } else {
-      root.classList.remove("dark");
-      localStorage.setItem(THEME_KEY, "light");
-    }
-  }, [isDark]);
-
   return (
     <AuthProvider>
       <ToastProvider>
         <ConfirmProvider>
-          <HashRouter>
-            <ThemeToggle isDark={isDark} onToggle={() => setIsDark((prev) => !prev)} />
-            <Routes>
-            <Route path="/login" element={<LoginPage />} />
+          <ThemeProvider>
+            <HashRouter>
+              <Routes>
+              <Route path="/login" element={<LoginPage />} />
           
           <Route path="/" element={
             <ProtectedRoute>
@@ -94,13 +52,14 @@ function App() {
             </ProtectedRoute>
           } />
 
-          <Route path="/character/:id" element={
-            <ProtectedRoute>
-              <CharacterSheet />
-            </ProtectedRoute>
-          } />
-          </Routes>
-          </HashRouter>
+              <Route path="/character/:id" element={
+                <ProtectedRoute>
+                  <CharacterSheet />
+                </ProtectedRoute>
+              } />
+              </Routes>
+            </HashRouter>
+          </ThemeProvider>
         </ConfirmProvider>
       </ToastProvider>
     </AuthProvider>

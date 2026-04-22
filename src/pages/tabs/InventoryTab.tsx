@@ -95,10 +95,10 @@ export function InventoryTab({ character, onUpdate, readOnly }: Props) {
                 </div>
             </div>
         ) : (
-            <div className="bg-amber-50 rounded-xl p-4 border border-amber-100 flex flex-col items-center justify-center">
-                <Coins className="text-amber-500 mb-1" size={20} />
-                <span className="text-2xl font-black text-amber-900">{character.gold}</span>
-                <span className="text-[10px] font-bold text-amber-600 uppercase">Gold Pieces</span>
+            <div className="bg-amber-50 dark:bg-amber-950/30 rounded-xl p-4 border border-amber-100 dark:border-amber-900/40 flex flex-col items-center justify-center">
+                <Coins className="text-amber-500 dark:text-amber-300 mb-1" size={20} />
+                <span className="text-2xl font-black text-amber-900 dark:text-amber-100">{character.gold}</span>
+                <span className="text-[10px] font-bold text-amber-600 dark:text-amber-300 uppercase">Gold Pieces</span>
             </div>
         )}
 

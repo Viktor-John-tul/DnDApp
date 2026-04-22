@@ -60,16 +60,16 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden"
+              className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden border border-transparent dark:border-slate-700"
             >
               <div className="p-6">
-                <h3 className="text-xl font-bold text-gray-900 mb-2">{state.options.title}</h3>
-                <p className="text-gray-600 mb-6">{state.options.message}</p>
+                <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2">{state.options.title}</h3>
+                <p className="text-gray-600 dark:text-slate-300 mb-6">{state.options.message}</p>
                 
                 <div className="flex gap-3">
                   <button
                     onClick={() => handleClose(false)}
-                    className="flex-1 py-3 px-4 rounded-xl font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 transition-colors"
+                    className="flex-1 py-3 px-4 rounded-xl font-bold text-gray-700 dark:text-slate-200 bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 transition-colors"
                   >
                     {state.options.cancelText}
                   </button>

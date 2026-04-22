@@ -72,7 +72,7 @@ export function MainStatsTab({ character, onUpdate, readOnly, onRollLogged }: Pr
         <VitalCard icon={<Shield size={16}/>} label="AC" value={ac} color="text-blue-600" bg="bg-blue-50" />
         <VitalCard icon={<Zap size={16}/>} label="Init" value={initiative >= 0 ? `+${initiative}` : initiative} color="text-yellow-600" bg="bg-yellow-50" />
         <VitalCard icon={<PersonStanding size={16}/>} label="Speed" value={`${speed}ft`} color={isEncumbered ? "text-red-500" : "text-green-600"} bg={isEncumbered ? "bg-red-50" : "bg-green-50"} />
-        <VitalCard icon={<Star size={16}/>} label="Prof" value={`+${proficiency}`} color="text-purple-600" bg="bg-purple-50" />
+        <VitalCard icon={<Star size={16}/>} label="Prof" value={`+${proficiency}`} color="text-purple-600 dark:text-purple-300" bg="bg-purple-50 dark:bg-purple-900/30" />
       </div>
 
       {/* Conditions */}
