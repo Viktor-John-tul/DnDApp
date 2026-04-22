@@ -1,5 +1,48 @@
 export type FormEffectType = 'damage' | 'attackBuff' | 'advantageBuff' | 'defenseBuff' | 'utility' | 'heal';
 
+export type ItemRarity = 'common' | 'special';
+
+export type ItemEffectKind = 'attributeBonus' | 'rollBonus' | 'defenseBonus' | 'advantage' | 'resistance' | 'triggered' | 'utility';
+
+export type ItemEffectTrigger =
+  | 'passive'
+  | 'onEquip'
+  | 'onUnequip'
+  | 'onAttack'
+  | 'onDamage'
+  | 'onCheck'
+  | 'onSave'
+  | 'onHit'
+  | 'onTurnStart'
+  | 'onTurnEnd'
+  | 'oncePerTurn'
+  | 'oncePerRest';
+
+export type ItemEffectStacking = 'stack' | 'highest' | 'override';
+
+export type ItemAttributeKey = 'strength' | 'dexterity' | 'constitution' | 'intelligence' | 'wisdom' | 'charisma';
+
+export type ItemAbilityShort = 'STR' | 'DEX' | 'CON' | 'INT' | 'WIS' | 'CHA';
+
+export type ItemEffectTarget = 'attack' | 'damage' | 'initiative' | 'check' | 'save' | 'skill' | 'ac' | 'speed' | 'maxHP' | 'carryCapacity';
+
+export interface ItemEffect {
+  id: string;
+  name: string;
+  kind: ItemEffectKind;
+  target?: ItemEffectTarget;
+  attribute?: ItemAttributeKey;
+  ability?: ItemAbilityShort;
+  skillName?: string;
+  amount?: number;
+  trigger?: ItemEffectTrigger;
+  stacking?: ItemEffectStacking;
+  durationRounds?: number;
+  usesPerRest?: number;
+  damageType?: string;
+  description?: string;
+}
+
 export type ActionType = 'main' | 'bonus' | 'reaction' | 'free';
 
 export type StatusEffectType = 'advantage' | 'disadvantage' | 'condition';
@@ -17,6 +60,9 @@ export interface InventoryItem {
   description: string;
   quantity: number;
   weight: number;
+  rarity?: ItemRarity;
+  equipped?: boolean;
+  effects?: ItemEffect[];
 }
 
 export interface BreathingForm {

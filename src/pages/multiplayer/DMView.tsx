@@ -7,7 +7,7 @@ import { GameService } from "../../services/gameService";
 import { CampaignService } from "../../services/campaignService";
 import { CharacterService } from "../../services/characterService";
 import type { GameSession } from "../../services/gameService";
-import type { Campaign, StatusEffect, InventoryItem } from "../../types";
+import type { Campaign, StatusEffect, InventoryItem, ItemEffect } from "../../types";
 import { Copy, Users, Power, ArrowLeft, Sparkles, Backpack, FileText, Coins, X, Heart, Wind, Square, CheckSquare, Swords, Lock, Crosshair, ArrowUpCircle } from 'lucide-react';
 import { motion, AnimatePresence } from "framer-motion";
 import { CombatManager } from "../../components/CombatManager";
@@ -24,6 +24,93 @@ const COMMON_EFFECTS = [
     { name: "Unconscious", type: "condition" },
     { name: "Blinded", type: "condition" },
 ];
+
+type ItemEffectDraft = Partial<ItemEffect> & { id: string };
+
+const createDefaultSpecialEffect = (): ItemEffectDraft => ({
+    id: crypto.randomUUID(),
+    kind: 'attributeBonus',
+    attribute: 'strength',
+    amount: 1,
+    trigger: 'passive',
+    stacking: 'stack'
+});
+
+const buildEffectName = (effect: ItemEffectDraft) => {
+    const amount = effect.amount ?? 0;
+
+    if (effect.kind === 'attributeBonus' && effect.attribute) {
+        return `${amount >= 0 ? '+' : ''}${amount} ${effect.attribute.slice(0, 3).toUpperCase()}`;
+    }
+
+    if (effect.kind === 'rollBonus' && effect.target) {
+        if (effect.target === 'attack') return `${amount >= 0 ? '+' : ''}${amount} attack`;
+        if (effect.target === 'damage') return `${amount >= 0 ? '+' : ''}${amount} damage`;
+        if (effect.target === 'initiative') return `${amount >= 0 ? '+' : ''}${amount} initiative`;
+        if (effect.target === 'ac') return `${amount >= 0 ? '+' : ''}${amount} AC`;
+        if (effect.target === 'speed') return `${amount >= 0 ? '+' : ''}${amount} speed`;
+        if (effect.target === 'maxHP') return `${amount >= 0 ? '+' : ''}${amount} max HP`;
+        if (effect.target === 'carryCapacity') return `${amount >= 0 ? '+' : ''}${amount} carry capacity`;
+        if (effect.target === 'check' && effect.ability) return `${amount >= 0 ? '+' : ''}${amount} ${effect.ability} checks`;
+        if (effect.target === 'save' && effect.ability) return `${amount >= 0 ? '+' : ''}${amount} ${effect.ability} saves`;
+        if (effect.target === 'skill' && effect.skillName) return `${amount >= 0 ? '+' : ''}${amount} ${effect.skillName}`;
+    }
+
+    if (effect.kind === 'defenseBonus' && effect.target) {
+        const amount = effect.amount ?? 0;
+        if (effect.target === 'ac') return `${amount >= 0 ? '+' : ''}${amount} AC`;
+        if (effect.target === 'speed') return `${amount >= 0 ? '+' : ''}${amount} speed`;
+        if (effect.target === 'maxHP') return `${amount >= 0 ? '+' : ''}${amount} max HP`;
+        if (effect.target === 'carryCapacity') return `${amount >= 0 ? '+' : ''}${amount} carry capacity`;
+    }
+
+    if (effect.kind === 'advantage' && effect.target) {
+        if (effect.target === 'skill' && effect.skillName) return `Advantage on ${effect.skillName}`;
+        if (effect.target === 'check' && effect.ability) return `Advantage on ${effect.ability} checks`;
+        if (effect.target === 'save' && effect.ability) return `Advantage on ${effect.ability} saves`;
+        return `Advantage on ${effect.target}`;
+    }
+
+    if (effect.kind === 'resistance' && effect.damageType) {
+        return `${effect.damageType} resistance`;
+    }
+
+    if (effect.description) return effect.description;
+    return effect.name || 'Special Effect';
+};
+
+const sanitizeEffectDraft = (effect: ItemEffectDraft): ItemEffect | null => {
+    if (!effect.kind) return null;
+
+    const base: ItemEffect = {
+        id: effect.id,
+        name: buildEffectName(effect),
+        kind: effect.kind,
+        trigger: effect.trigger || 'passive',
+        stacking: effect.stacking,
+        description: effect.description,
+        durationRounds: effect.durationRounds,
+        usesPerRest: effect.usesPerRest,
+        amount: effect.amount,
+        target: effect.target,
+        attribute: effect.attribute,
+        ability: effect.ability,
+        skillName: effect.skillName,
+        damageType: effect.damageType
+    };
+
+    if (effect.kind === 'attributeBonus' && !effect.attribute) return null;
+    if ((effect.kind === 'rollBonus' || effect.kind === 'defenseBonus' || effect.kind === 'advantage') && !effect.target) return null;
+    if (effect.kind === 'rollBonus' && effect.target === 'check' && !effect.ability) return null;
+    if (effect.kind === 'rollBonus' && effect.target === 'save' && !effect.ability) return null;
+    if (effect.kind === 'rollBonus' && effect.target === 'skill' && !effect.skillName) return null;
+    if (effect.kind === 'advantage' && effect.target === 'check' && !effect.ability) return null;
+    if (effect.kind === 'advantage' && effect.target === 'save' && !effect.ability) return null;
+    if (effect.kind === 'advantage' && effect.target === 'skill' && !effect.skillName) return null;
+    if (effect.kind === 'resistance' && !effect.damageType) return null;
+
+    return base;
+};
 
 export function DMView() {
   const { showToast } = useToast();
@@ -55,7 +142,14 @@ export function DMView() {
     });
 
   // Item Adding State
-  const [newItemParams, setNewItemParams] = useState({ name: "", quantity: 1, weight: 0 });
+    const [newItemParams, setNewItemParams] = useState({
+            name: "",
+            description: "",
+            rarity: 'common' as 'common' | 'special',
+            quantity: 1,
+            weight: 0,
+            effects: [createDefaultSpecialEffect()] as ItemEffectDraft[]
+    });
   const [goldAmount, setGoldAmount] = useState(0);
   const [hpAmount, setHpAmount] = useState(0);
   
@@ -188,10 +282,19 @@ export function DMView() {
 
   const handleGiveItem = async () => {
       if (!newItemParams.name || targetIds.size === 0) return;
+
+      const sanitizedEffects = newItemParams.rarity === 'special'
+          ? (newItemParams.effects || []).map(sanitizeEffectDraft).filter(Boolean) as ItemEffect[]
+          : [];
+
+      if (newItemParams.rarity === 'special' && sanitizedEffects.length === 0) {
+          showToast("Special items need at least one valid effect.", 'error');
+          return;
+      }
       
       const isConfirmed = await confirm({
           title: "Give Item to Players",
-          message: `Give "${newItemParams.name}" (x${newItemParams.quantity}) to ${targetIds.size} player(s)?`,
+          message: `Give "${newItemParams.name}"${newItemParams.rarity === 'special' ? ' (Special)' : ''} to ${targetIds.size} player(s)?`,
           confirmText: "Give Item",
           variant: "info"
       });
@@ -205,9 +308,12 @@ export function DMView() {
               const newItem: InventoryItem = {
                   id: crypto.randomUUID(),
                   name: newItemParams.name,
-                  description: "Given by DM",
-                  quantity: newItemParams.quantity,
-                  weight: newItemParams.weight
+                  description: newItemParams.description || "Given by DM",
+                  quantity: newItemParams.rarity === 'special' ? 1 : newItemParams.quantity,
+                  weight: newItemParams.weight,
+                  rarity: newItemParams.rarity,
+                  equipped: false,
+                  effects: newItemParams.rarity === 'special' ? sanitizedEffects : undefined
               };
               
               const currentInv = char.inventory || [];
@@ -223,10 +329,51 @@ export function DMView() {
               showToast("Error giving items", 'error');
           }
 
-          setNewItemParams({ name: "", quantity: 1, weight: 0 });
+          setNewItemParams({ name: "", description: "", rarity: 'common', quantity: 1, weight: 0, effects: [createDefaultSpecialEffect()] });
           setTargetIds(new Set()); 
       } catch (error) {
           showToast("Error giving items", 'error');
+      }
+  };
+
+  const updateSpecialEffect = (effectId: string, updates: Partial<ItemEffectDraft>) => {
+      setNewItemParams(prev => ({
+          ...prev,
+          effects: prev.effects.map(effect => effect.id === effectId ? { ...effect, ...updates } : effect)
+      }));
+  };
+
+  const addSpecialEffect = () => {
+      setNewItemParams(prev => ({
+          ...prev,
+          effects: [...prev.effects, createDefaultSpecialEffect()]
+      }));
+  };
+
+  const removeSpecialEffect = (effectId: string) => {
+      setNewItemParams(prev => ({
+          ...prev,
+          effects: prev.effects.length > 1 ? prev.effects.filter(effect => effect.id !== effectId) : prev.effects
+      }));
+  };
+
+  const getEffectDefaults = (kind: ItemEffectDraft['kind']): Partial<ItemEffectDraft> => {
+      switch (kind) {
+          case 'attributeBonus':
+              return { attribute: 'strength', amount: 1, trigger: 'passive', stacking: 'stack' };
+          case 'rollBonus':
+              return { target: 'damage', amount: 1, trigger: 'passive', stacking: 'stack' };
+          case 'defenseBonus':
+              return { target: 'ac', amount: 1, trigger: 'passive', stacking: 'stack' };
+          case 'advantage':
+              return { target: 'check', ability: 'DEX', trigger: 'passive', stacking: 'highest' };
+          case 'resistance':
+              return { damageType: 'Fire', trigger: 'passive', stacking: 'highest' };
+          case 'triggered':
+          case 'utility':
+              return { description: '', trigger: 'oncePerRest', usesPerRest: 1, durationRounds: 0, stacking: 'override' };
+          default:
+              return {};
       }
   };
 
@@ -758,14 +905,48 @@ export function DMView() {
                                     onChange={e => setNewItemParams({...newItemParams, name: e.target.value})}
                                     className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg font-medium outline-none focus:ring-2 ring-blue-100 transition-all"
                                 />
+                                <textarea 
+                                    placeholder="Description"
+                                    value={newItemParams.description}
+                                    onChange={e => setNewItemParams({...newItemParams, description: e.target.value})}
+                                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg text-sm outline-none focus:ring-2 ring-blue-100 transition-all min-h-[88px] resize-none"
+                                />
+
+                                <div>
+                                    <label className="text-[10px] uppercase font-bold text-gray-400 mb-1 block">Rarity</label>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        {(['common', 'special'] as const).map(rarity => (
+                                            <button
+                                                key={rarity}
+                                                onClick={() => setNewItemParams(prev => ({
+                                                    ...prev,
+                                                    rarity,
+                                                    quantity: rarity === 'special' ? 1 : prev.quantity,
+                                                    effects: rarity === 'special' && prev.effects.length === 0 ? [createDefaultSpecialEffect()] : prev.effects
+                                                }))}
+                                                className={`p-3 text-sm font-bold uppercase rounded-xl border transition-all ${
+                                                    newItemParams.rarity === rarity
+                                                        ? rarity === 'special'
+                                                            ? 'bg-amber-50 border-amber-200 text-amber-700 ring-1 ring-amber-200'
+                                                            : 'bg-gray-100 border-gray-300 text-gray-800 ring-1 ring-gray-200'
+                                                        : 'bg-gray-50 border-gray-200 text-gray-400 hover:bg-gray-100'
+                                                }`}
+                                            >
+                                                {rarity}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
                                 <div className="flex gap-3">
                                     <div className="flex-1">
                                         <label className="text-[10px] uppercase font-bold text-gray-400 mb-1 block">Quantity</label>
                                         <input 
                                             type="number" 
-                                            value={newItemParams.quantity}
+                                            value={newItemParams.rarity === 'special' ? 1 : newItemParams.quantity}
+                                            disabled={newItemParams.rarity === 'special'}
                                             onChange={e => setNewItemParams({...newItemParams, quantity: Math.max(1, parseInt(e.target.value)||1)})}
-                                            className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg font-medium text-center outline-none focus:ring-2 ring-blue-100"
+                                            className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg font-medium text-center outline-none focus:ring-2 ring-blue-100 disabled:opacity-60 disabled:cursor-not-allowed"
                                         />
                                     </div>
                                     <div className="flex-1">
@@ -778,6 +959,309 @@ export function DMView() {
                                         />
                                     </div>
                                 </div>
+
+                                {newItemParams.rarity === 'special' && (
+                                    <div className="pt-3 border-t border-gray-100 space-y-3">
+                                        <div className="flex items-center justify-between gap-3">
+                                            <div>
+                                                <h4 className="font-bold text-gray-700">Special Effects</h4>
+                                                <p className="text-xs text-gray-400">Add one or more effects to this item.</p>
+                                            </div>
+                                            <button
+                                                onClick={addSpecialEffect}
+                                                className="text-xs font-bold text-slayer-orange bg-orange-50 px-3 py-2 rounded-lg border border-orange-100"
+                                            >
+                                                Add Effect
+                                            </button>
+                                        </div>
+
+                                        {newItemParams.effects.map((effect, index) => (
+                                            <div key={effect.id} className="rounded-xl border border-amber-200 bg-amber-50/50 p-3 space-y-3">
+                                                <div className="flex items-center justify-between gap-2">
+                                                    <span className="text-sm font-bold text-amber-800">Effect {index + 1}</span>
+                                                    <div className="flex items-center gap-2">
+                                                        <select
+                                                            value={effect.kind || 'attributeBonus'}
+                                                            onChange={e => updateSpecialEffect(effect.id, {
+                                                                kind: e.target.value as ItemEffectDraft['kind'],
+                                                                ...getEffectDefaults(e.target.value as ItemEffectDraft['kind'])
+                                                            })}
+                                                            className="px-2 py-1.5 bg-white border border-amber-200 rounded-lg text-xs font-bold text-gray-700 outline-none"
+                                                        >
+                                                            <option value="attributeBonus">Attribute</option>
+                                                            <option value="rollBonus">Roll Bonus</option>
+                                                            <option value="defenseBonus">Defense</option>
+                                                            <option value="advantage">Advantage</option>
+                                                            <option value="resistance">Resistance</option>
+                                                            <option value="triggered">Triggered</option>
+                                                            <option value="utility">Utility</option>
+                                                        </select>
+                                                        {newItemParams.effects.length > 1 && (
+                                                            <button
+                                                                onClick={() => removeSpecialEffect(effect.id)}
+                                                                className="text-xs font-bold text-red-500"
+                                                            >
+                                                                Remove
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </div>
+
+                                                <div className="grid grid-cols-2 gap-2">
+                                                    <div>
+                                                        <label className="text-[10px] uppercase font-bold text-gray-400 mb-1 block">Trigger</label>
+                                                        <select
+                                                            value={effect.trigger || 'passive'}
+                                                            onChange={e => updateSpecialEffect(effect.id, { trigger: e.target.value as ItemEffectDraft['trigger'] })}
+                                                            className="w-full px-3 py-2 bg-white border border-amber-200 rounded-lg text-sm outline-none"
+                                                        >
+                                                            <option value="passive">Passive</option>
+                                                            <option value="onEquip">On Equip</option>
+                                                            <option value="onUnequip">On Unequip</option>
+                                                            <option value="onAttack">On Attack</option>
+                                                            <option value="onDamage">On Damage</option>
+                                                            <option value="onCheck">On Check</option>
+                                                            <option value="onSave">On Save</option>
+                                                            <option value="onHit">On Hit</option>
+                                                            <option value="onTurnStart">On Turn Start</option>
+                                                            <option value="onTurnEnd">On Turn End</option>
+                                                            <option value="oncePerTurn">Once Per Turn</option>
+                                                            <option value="oncePerRest">Once Per Rest</option>
+                                                        </select>
+                                                    </div>
+                                                    <div>
+                                                        <label className="text-[10px] uppercase font-bold text-gray-400 mb-1 block">Stacking</label>
+                                                        <select
+                                                            value={effect.stacking || 'stack'}
+                                                            onChange={e => updateSpecialEffect(effect.id, { stacking: e.target.value as ItemEffectDraft['stacking'] })}
+                                                            className="w-full px-3 py-2 bg-white border border-amber-200 rounded-lg text-sm outline-none"
+                                                        >
+                                                            <option value="stack">Stack</option>
+                                                            <option value="highest">Highest</option>
+                                                            <option value="override">Override</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+
+                                                {effect.kind === 'attributeBonus' && (
+                                                    <div className="grid grid-cols-2 gap-2">
+                                                        <div>
+                                                            <label className="text-[10px] uppercase font-bold text-gray-400 mb-1 block">Attribute</label>
+                                                            <select
+                                                                value={effect.attribute || 'strength'}
+                                                                onChange={e => updateSpecialEffect(effect.id, { attribute: e.target.value as ItemEffectDraft['attribute'] })}
+                                                                className="w-full px-3 py-2 bg-white border border-amber-200 rounded-lg text-sm outline-none"
+                                                            >
+                                                                <option value="strength">STR</option>
+                                                                <option value="dexterity">DEX</option>
+                                                                <option value="constitution">CON</option>
+                                                                <option value="intelligence">INT</option>
+                                                                <option value="wisdom">WIS</option>
+                                                                <option value="charisma">CHA</option>
+                                                            </select>
+                                                        </div>
+                                                        <div>
+                                                            <label className="text-[10px] uppercase font-bold text-gray-400 mb-1 block">Bonus</label>
+                                                            <input
+                                                                type="number"
+                                                                value={effect.amount ?? 1}
+                                                                onChange={e => updateSpecialEffect(effect.id, { amount: parseInt(e.target.value) || 0 })}
+                                                                className="w-full px-3 py-2 bg-white border border-amber-200 rounded-lg text-sm text-center outline-none"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {effect.kind === 'rollBonus' && (
+                                                    <div className="space-y-2">
+                                                        <div className="grid grid-cols-2 gap-2">
+                                                            <div>
+                                                                <label className="text-[10px] uppercase font-bold text-gray-400 mb-1 block">Target</label>
+                                                                <select
+                                                                    value={effect.target || 'damage'}
+                                                                    onChange={e => updateSpecialEffect(effect.id, { target: e.target.value as ItemEffectDraft['target'] })}
+                                                                    className="w-full px-3 py-2 bg-white border border-amber-200 rounded-lg text-sm outline-none"
+                                                                >
+                                                                    <option value="attack">Attack</option>
+                                                                    <option value="damage">Damage</option>
+                                                                    <option value="initiative">Initiative</option>
+                                                                    <option value="check">Ability Check</option>
+                                                                    <option value="save">Saving Throw</option>
+                                                                    <option value="skill">Skill</option>
+                                                                    <option value="ac">AC</option>
+                                                                    <option value="speed">Speed</option>
+                                                                    <option value="maxHP">Max HP</option>
+                                                                    <option value="carryCapacity">Carry Capacity</option>
+                                                                </select>
+                                                            </div>
+                                                            <div>
+                                                                <label className="text-[10px] uppercase font-bold text-gray-400 mb-1 block">Bonus</label>
+                                                                <input
+                                                                    type="number"
+                                                                    value={effect.amount ?? 1}
+                                                                    onChange={e => updateSpecialEffect(effect.id, { amount: parseInt(e.target.value) || 0 })}
+                                                                    className="w-full px-3 py-2 bg-white border border-amber-200 rounded-lg text-sm text-center outline-none"
+                                                                />
+                                                            </div>
+                                                        </div>
+
+                                                        {(effect.target === 'check' || effect.target === 'save') && (
+                                                            <div>
+                                                                <label className="text-[10px] uppercase font-bold text-gray-400 mb-1 block">Ability</label>
+                                                                <select
+                                                                    value={effect.ability || 'STR'}
+                                                                    onChange={e => updateSpecialEffect(effect.id, { ability: e.target.value as ItemEffectDraft['ability'] })}
+                                                                    className="w-full px-3 py-2 bg-white border border-amber-200 rounded-lg text-sm outline-none"
+                                                                >
+                                                                    <option value="STR">STR</option>
+                                                                    <option value="DEX">DEX</option>
+                                                                    <option value="CON">CON</option>
+                                                                    <option value="INT">INT</option>
+                                                                    <option value="WIS">WIS</option>
+                                                                    <option value="CHA">CHA</option>
+                                                                </select>
+                                                            </div>
+                                                        )}
+
+                                                        {effect.target === 'skill' && (
+                                                            <div>
+                                                                <label className="text-[10px] uppercase font-bold text-gray-400 mb-1 block">Skill Name</label>
+                                                                <input
+                                                                    type="text"
+                                                                    value={effect.skillName || ''}
+                                                                    onChange={e => updateSpecialEffect(effect.id, { skillName: e.target.value })}
+                                                                    placeholder="Stealth, Athletics, etc."
+                                                                    className="w-full px-3 py-2 bg-white border border-amber-200 rounded-lg text-sm outline-none"
+                                                                />
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )}
+
+                                                {effect.kind === 'defenseBonus' && (
+                                                    <div className="grid grid-cols-2 gap-2">
+                                                        <div>
+                                                            <label className="text-[10px] uppercase font-bold text-gray-400 mb-1 block">Target</label>
+                                                            <select
+                                                                value={effect.target || 'ac'}
+                                                                onChange={e => updateSpecialEffect(effect.id, { target: e.target.value as ItemEffectDraft['target'] })}
+                                                                className="w-full px-3 py-2 bg-white border border-amber-200 rounded-lg text-sm outline-none"
+                                                            >
+                                                                <option value="ac">AC</option>
+                                                                <option value="speed">Speed</option>
+                                                                <option value="maxHP">Max HP</option>
+                                                                <option value="carryCapacity">Carry Capacity</option>
+                                                            </select>
+                                                        </div>
+                                                        <div>
+                                                            <label className="text-[10px] uppercase font-bold text-gray-400 mb-1 block">Bonus</label>
+                                                            <input
+                                                                type="number"
+                                                                value={effect.amount ?? 1}
+                                                                onChange={e => updateSpecialEffect(effect.id, { amount: parseInt(e.target.value) || 0 })}
+                                                                className="w-full px-3 py-2 bg-white border border-amber-200 rounded-lg text-sm text-center outline-none"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {effect.kind === 'advantage' && (
+                                                    <div className="grid grid-cols-2 gap-2">
+                                                        <div>
+                                                            <label className="text-[10px] uppercase font-bold text-gray-400 mb-1 block">Target</label>
+                                                            <select
+                                                                value={effect.target || 'check'}
+                                                                onChange={e => updateSpecialEffect(effect.id, { target: e.target.value as ItemEffectDraft['target'] })}
+                                                                className="w-full px-3 py-2 bg-white border border-amber-200 rounded-lg text-sm outline-none"
+                                                            >
+                                                                <option value="attack">Attack</option>
+                                                                <option value="damage">Damage</option>
+                                                                <option value="initiative">Initiative</option>
+                                                                <option value="check">Ability Check</option>
+                                                                <option value="save">Saving Throw</option>
+                                                                <option value="skill">Skill</option>
+                                                            </select>
+                                                        </div>
+                                                        <div>
+                                                            <label className="text-[10px] uppercase font-bold text-gray-400 mb-1 block">Ability / Skill</label>
+                                                            {effect.target === 'skill' ? (
+                                                                <input
+                                                                    type="text"
+                                                                    value={effect.skillName || ''}
+                                                                    onChange={e => updateSpecialEffect(effect.id, { skillName: e.target.value })}
+                                                                    placeholder="Stealth, Athletics, etc."
+                                                                    className="w-full px-3 py-2 bg-white border border-amber-200 rounded-lg text-sm outline-none"
+                                                                />
+                                                            ) : (
+                                                                <select
+                                                                    value={effect.ability || 'STR'}
+                                                                    onChange={e => updateSpecialEffect(effect.id, { ability: e.target.value as ItemEffectDraft['ability'] })}
+                                                                    className="w-full px-3 py-2 bg-white border border-amber-200 rounded-lg text-sm outline-none"
+                                                                >
+                                                                    <option value="STR">STR</option>
+                                                                    <option value="DEX">DEX</option>
+                                                                    <option value="CON">CON</option>
+                                                                    <option value="INT">INT</option>
+                                                                    <option value="WIS">WIS</option>
+                                                                    <option value="CHA">CHA</option>
+                                                                </select>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {effect.kind === 'resistance' && (
+                                                    <div>
+                                                        <label className="text-[10px] uppercase font-bold text-gray-400 mb-1 block">Damage Type</label>
+                                                        <input
+                                                            type="text"
+                                                            value={effect.damageType || ''}
+                                                            onChange={e => updateSpecialEffect(effect.id, { damageType: e.target.value })}
+                                                            placeholder="Fire, cold, poison..."
+                                                            className="w-full px-3 py-2 bg-white border border-amber-200 rounded-lg text-sm outline-none"
+                                                        />
+                                                    </div>
+                                                )}
+
+                                                {(effect.kind === 'triggered' || effect.kind === 'utility') && (
+                                                    <div className="space-y-2">
+                                                        <div>
+                                                            <label className="text-[10px] uppercase font-bold text-gray-400 mb-1 block">Description</label>
+                                                            <textarea
+                                                                value={effect.description || ''}
+                                                                onChange={e => updateSpecialEffect(effect.id, { description: e.target.value })}
+                                                                className="w-full p-3 bg-white border border-amber-200 rounded-lg text-sm outline-none min-h-[80px] resize-none"
+                                                                placeholder="Describe what happens when this effect triggers."
+                                                            />
+                                                        </div>
+                                                        <div className="grid grid-cols-2 gap-2">
+                                                            <div>
+                                                                <label className="text-[10px] uppercase font-bold text-gray-400 mb-1 block">Uses / Rest</label>
+                                                                <input
+                                                                    type="number"
+                                                                    min={0}
+                                                                    value={effect.usesPerRest ?? 1}
+                                                                    onChange={e => updateSpecialEffect(effect.id, { usesPerRest: Math.max(0, parseInt(e.target.value) || 0) })}
+                                                                    className="w-full px-3 py-2 bg-white border border-amber-200 rounded-lg text-sm text-center outline-none"
+                                                                />
+                                                            </div>
+                                                            <div>
+                                                                <label className="text-[10px] uppercase font-bold text-gray-400 mb-1 block">Duration</label>
+                                                                <input
+                                                                    type="number"
+                                                                    min={0}
+                                                                    value={effect.durationRounds ?? 0}
+                                                                    onChange={e => updateSpecialEffect(effect.id, { durationRounds: Math.max(0, parseInt(e.target.value) || 0) })}
+                                                                    className="w-full px-3 py-2 bg-white border border-amber-200 rounded-lg text-sm text-center outline-none"
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
 
                             <button 

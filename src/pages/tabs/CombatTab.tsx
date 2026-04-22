@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Swords, Wind, Zap, ZapOff, AlertTriangle, Plus, Minus, ShieldAlert, X, Heart, Shield, ArrowUp, ArrowDown, Clock, Lock, SkipForward } from 'lucide-react';
 import type { RPGCharacter, BreathingForm, CombatAction } from '../../types';
 import type { GameSession } from '../../services/gameService';
-import { Calculator } from '../../services/rules';
+import { Calculator, resolveEquippedSpecialItemBonuses } from '../../services/rules';
 import { DiceRollerOverlay } from '../../components/DiceRollerOverlay';
 import { BreathingFormEditorModal } from '../../components/BreathingFormEditorModal';
 import { CombatActionEditorModal } from '../../components/CombatActionEditorModal';
@@ -63,14 +63,18 @@ export function CombatTab({ character, onUpdate, readOnly, isDM, session, onRoll
       face: number;
   }>({ show: false, count: 1, face: 8 });
 
-  const conMod = Calculator.getModifier(character.constitution);
-  const strMod = Calculator.getModifier(character.strength);
-  const dexMod = Calculator.getModifier(character.dexterity);
+    const itemBonuses = resolveEquippedSpecialItemBonuses(character.inventory || []);
+    const effectiveStrength = character.strength + itemBonuses.attributeBonuses.strength;
+    const effectiveDexterity = character.dexterity + itemBonuses.attributeBonuses.dexterity;
+    const effectiveConstitution = character.constitution + itemBonuses.attributeBonuses.constitution;
+    const conMod = Calculator.getModifier(effectiveConstitution);
+    const strMod = Calculator.getModifier(effectiveStrength);
+    const dexMod = Calculator.getModifier(effectiveDexterity);
   const proficiency = Calculator.getProficiencyBonus(character.level);
 
   // Encumbrance
   const currentLoad = Calculator.getCurrentLoad(character.inventory || []);
-  const maxLoad = Calculator.getMaxLoad(character.strength);
+    const maxLoad = Calculator.getMaxLoad(effectiveStrength) + itemBonuses.carryCapacityBonus;
   const isEncumbered = character.type === 'demon' ? false : currentLoad > maxLoad;
 
     const isDemon = character.type === 'demon';
@@ -92,6 +96,8 @@ export function CombatTab({ character, onUpdate, readOnly, isDM, session, onRoll
   
   // Helper to determine best attack mod (Str vs Dex) - simplified
   const attackMod = Math.max(strMod, dexMod); 
+    const attackRollModifier = attackMod + proficiency + itemBonuses.attackBonus;
+    const damageRollModifier = itemBonuses.damageBonus;
 
     const hasActiveAdvantageBuff = () => {
         const fromLegacyBuff = Boolean(
@@ -106,7 +112,7 @@ export function CombatTab({ character, onUpdate, readOnly, isDM, session, onRoll
     const getAttackRollMode = (): 'normal' | 'advantage' | 'disadvantage' => {
         const hasEffectAdvantage = character.statusEffects?.some((e) => e.type === 'advantage');
         const hasEffectDisadvantage = character.statusEffects?.some((e) => e.type === 'disadvantage');
-        const hasAdv = hasActiveAdvantageBuff() || hasEffectAdvantage;
+        const hasAdv = hasActiveAdvantageBuff() || hasEffectAdvantage || itemBonuses.attackAdvantage;
         const hasDis = isEncumbered || hasEffectDisadvantage;
 
         if (hasAdv && !hasDis) return 'advantage';
@@ -211,7 +217,7 @@ export function CombatTab({ character, onUpdate, readOnly, isDM, session, onRoll
     if (form.requiresAttackRoll) {
         setActiveRoll({
             label: `${form.name} (Attack)`,
-            modifier: attackMod + proficiency, // Attack Roll Mod
+            modifier: attackRollModifier, // Attack Roll Mod
             mode: rollMode,
             isAttack: true,
             pendingForm: form
@@ -230,7 +236,7 @@ export function CombatTab({ character, onUpdate, readOnly, isDM, session, onRoll
           let face = form.diceFace;
           let mod = 0; // Damage mod? Usually Ability Mod. 
           // Let's assume Ability Mod applies to damage too? User didn't specify but D&D standard says yes.
-          mod = Math.max(strMod, dexMod); // Using same stat as attack for simplicity
+          mod = Math.max(strMod, dexMod) + damageRollModifier; // Using same stat as attack for simplicity
 
           // Apply Active Buff if exists
           // Prevent Regen Buffs from incorrectly adding to damage dice
@@ -414,7 +420,7 @@ export function CombatTab({ character, onUpdate, readOnly, isDM, session, onRoll
 
                      setActiveRoll({
                          label: `${form.name} (Attack)`,
-                         modifier: attackMod + proficiency,
+                         modifier: attackRollModifier,
                          mode: rollMode,
                          isAttack: true,
                          pendingForm: form
@@ -429,7 +435,7 @@ export function CombatTab({ character, onUpdate, readOnly, isDM, session, onRoll
              setTimeout(() => {
                 setActiveRoll({
                     label: "Backlash Damage!",
-                    modifier: 0,
+                    modifier: damageRollModifier,
                     isDamage: true,
                     isBacklash: true,
                     diceCount: 2, 
@@ -536,7 +542,7 @@ export function CombatTab({ character, onUpdate, readOnly, isDM, session, onRoll
                     if (form.requiresAttackRoll) {
                         setActiveRoll({
                             label: `${form.name} (Attack)`,
-                            modifier: attackMod + proficiency,
+                            modifier: attackRollModifier,
                             mode: rollMode,
                             isAttack: true,
                             pendingForm: form
@@ -1070,7 +1076,7 @@ export function CombatTab({ character, onUpdate, readOnly, isDM, session, onRoll
                 
                 setActiveRoll({
                     label: "Unarmed Strike", 
-                    modifier: strMod + proficiency,
+                    modifier: attackRollModifier,
                     mode: rollMode,
                     isAttack: true
                 });
@@ -1088,7 +1094,7 @@ export function CombatTab({ character, onUpdate, readOnly, isDM, session, onRoll
                 </div>
                 <span className="font-bold text-sm text-gray-700">Unarmed Strike</span>
             </div>
-            <span className="text-xs font-bold text-gray-400">1d4 + {strMod}</span>
+                <span className="text-xs font-bold text-gray-400">1d4 + {strMod + damageRollModifier}</span>
          </button>
 
              {character.customActions?.filter(a => a.type === 'main').map(action => (
@@ -1106,7 +1112,7 @@ export function CombatTab({ character, onUpdate, readOnly, isDM, session, onRoll
                         if (a.rollMode === 'attack') {
                             setActiveRoll({
                                 label: `${a.name} (Attack)`,
-                                modifier: attackMod + proficiency,
+                                modifier: attackRollModifier,
                                 mode: getAttackRollMode(),
                                 isAttack: true,
                             });
@@ -1119,7 +1125,7 @@ export function CombatTab({ character, onUpdate, readOnly, isDM, session, onRoll
                         setActiveRoll({
                             label: `${a.name} (Damage)`,
                             mode: 'normal',
-                            modifier: 0,
+                            modifier: damageRollModifier,
                             isDamage: true,
                             diceCount: a.diceCount || 1,
                             diceFace: a.diceFace || 6,
@@ -1231,7 +1237,7 @@ export function CombatTab({ character, onUpdate, readOnly, isDM, session, onRoll
                         if (a.rollMode === 'attack') {
                             setActiveRoll({
                                 label: `${a.name} (Attack)`,
-                                modifier: attackMod + proficiency,
+                                modifier: attackRollModifier,
                                 mode: getAttackRollMode(),
                                 isAttack: true,
                             });
@@ -1240,7 +1246,7 @@ export function CombatTab({ character, onUpdate, readOnly, isDM, session, onRoll
                         setActiveRoll({
                             label: `${a.name} (Damage)`,
                             mode: 'normal',
-                            modifier: 0,
+                            modifier: damageRollModifier,
                             isDamage: true,
                             diceCount: a.diceCount || 1,
                             diceFace: a.diceFace || 6,
@@ -1277,7 +1283,7 @@ export function CombatTab({ character, onUpdate, readOnly, isDM, session, onRoll
                         if (a.rollMode === 'attack') {
                             setActiveRoll({
                                 label: `${a.name} (Attack)`,
-                                modifier: attackMod + proficiency,
+                                modifier: attackRollModifier,
                                 mode: getAttackRollMode(),
                                 isAttack: true,
                             });
@@ -1286,7 +1292,7 @@ export function CombatTab({ character, onUpdate, readOnly, isDM, session, onRoll
                         setActiveRoll({
                             label: `${a.name} (Damage)`,
                             mode: 'normal',
-                            modifier: 0,
+                            modifier: damageRollModifier,
                             isDamage: true,
                             diceCount: a.diceCount || 1,
                             diceFace: a.diceFace || 6,

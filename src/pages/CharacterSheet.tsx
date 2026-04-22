@@ -17,7 +17,7 @@ import { GameService } from "../services/gameService";
 import { useToast } from "../context/ToastContext";
 import { DiceRollerOverlay } from "../components/DiceRollerOverlay";
 import { HealthPopup } from "../components/HealthPopup";
-import { Calculator } from "../services/rules";
+import { Calculator, resolveEquippedSpecialItemBonuses } from "../services/rules";
 
 type TabId = 'stats' | 'combat' | 'inventory' | 'bio' | 'logs';
 
@@ -52,12 +52,17 @@ export function CharacterSheet() {
                             diceFace: number;
                     } | null>(null);
                         const [showInitiativePrompt, setShowInitiativePrompt] = useState(false);
-                        const [activeInitiativeRoll, setActiveInitiativeRoll] = useState<{ modifier: number } | null>(null);
+                        const [activeInitiativeRoll, setActiveInitiativeRoll] = useState<{ modifier: number; mode: 'normal' | 'advantage' | 'disadvantage' } | null>(null);
   
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prevCharacterRef = useRef<RPGCharacter | null>(null);
     const lastLevelSeenRef = useRef<number | null>(null);
       const levelPopupHandledRef = useRef<number | null>(null);
+    const itemBonuses = character ? resolveEquippedSpecialItemBonuses(character.inventory || []) : null;
+    const initiativeBonus = character
+        ? (character.customInitiative ?? Calculator.getModifier(character.dexterity + (itemBonuses?.attributeBonuses.dexterity || 0))) + (itemBonuses?.initiativeBonus || 0)
+        : 0;
+    const initiativeMode: 'normal' | 'advantage' | 'disadvantage' = itemBonuses?.initiativeAdvantage ? 'advantage' : 'normal';
 
   // Check DM Status
   useEffect(() => {
@@ -656,12 +661,12 @@ export function CharacterSheet() {
                     <div className="rounded-xl border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 p-3 mb-4">
                         <div className="text-xs uppercase font-bold text-gray-400">Initiative Bonus</div>
                         <div className="text-2xl font-black text-slayer-orange mt-1">
-                            {(character.customInitiative ?? Calculator.getModifier(character.dexterity)) >= 0 ? '+' : ''}
-                            {character.customInitiative ?? Calculator.getModifier(character.dexterity)}
+                            {initiativeBonus >= 0 ? '+' : ''}
+                            {initiativeBonus}
                         </div>
                     </div>
                     <button
-                        onClick={() => setActiveInitiativeRoll({ modifier: character.customInitiative ?? Calculator.getModifier(character.dexterity) })}
+                        onClick={() => setActiveInitiativeRoll({ modifier: initiativeBonus, mode: initiativeMode })}
                         className="w-full py-3 rounded-xl bg-slayer-orange text-white font-bold shadow-lg shadow-orange-200"
                     >
                         Roll Initiative
@@ -672,7 +677,7 @@ export function CharacterSheet() {
 
         {activeInitiativeRoll && character.activeSessionCode && character.id && (
             <DiceRollerOverlay
-                mode="normal"
+                mode={activeInitiativeRoll.mode}
                 modifier={activeInitiativeRoll.modifier}
                 label="Initiative"
                 onComplete={async (total) => {

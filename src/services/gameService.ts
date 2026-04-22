@@ -13,6 +13,7 @@ import {
   deleteDoc
 } from "firebase/firestore";
 import type { RPGCharacter, CombatState } from "../types";
+import { Calculator, resolveEquippedSpecialItemBonuses } from "./rules";
 import { getEffectiveMaxBreaths } from "./slayerProgression";
 
 export interface GameSession {
@@ -35,6 +36,28 @@ export interface PlayerSyncData {
   photoUrl?: string | null;
   initiative?: number;
 }
+
+const buildPlayerSyncData = (character: RPGCharacter): PlayerSyncData => {
+  const itemBonuses = resolveEquippedSpecialItemBonuses(character.inventory || []);
+  const effectiveDexterity = character.dexterity + itemBonuses.attributeBonuses.dexterity;
+  const effectiveConstitution = character.constitution + itemBonuses.attributeBonuses.constitution;
+  const baseInitiative = character.customInitiative ?? Calculator.getModifier(effectiveDexterity);
+  const baseMaxHP = character.customMaxHP ?? Calculator.getMaxHP(effectiveConstitution, character.level);
+  const maxHP = Math.max(1, baseMaxHP + itemBonuses.maxHPBonus);
+
+  return {
+    id: character.id || "unknown_" + Date.now(),
+    name: character.name,
+    ...(character.type ? { type: character.type } : {}),
+    currentHP: Math.min(character.currentHP, maxHP),
+    maxHP,
+    currentBreaths: character.currentBreaths,
+    maxBreaths: getEffectiveMaxBreaths(character),
+    level: character.level,
+    photoUrl: character.photoUrl,
+    initiative: baseInitiative + itemBonuses.initiativeBonus
+  };
+};
 
 export const GameService = {
   // Generate a random 6-character code
@@ -119,18 +142,7 @@ export const GameService = {
     }
 
     const charId = character.id || "unknown_" + Date.now();
-    const playerData: PlayerSyncData = {
-      id: charId,
-      name: character.name,
-      ...(character.type ? { type: character.type } : {}),
-      currentHP: character.currentHP,
-      maxHP: character.maxHP || character.currentHP,
-      currentBreaths: character.currentBreaths,
-      maxBreaths: getEffectiveMaxBreaths(character),
-      level: character.level,
-      photoUrl: character.photoUrl,
-      initiative: character.customInitiative || 0
-    };
+    const playerData = buildPlayerSyncData({ ...character, id: charId });
 
     await updateDoc(sessionRef, {
       [`players.${charId}`]: playerData
@@ -155,18 +167,7 @@ export const GameService = {
      const charId = character.id || "";
      if (!charId) return; // Should not happen for synced chars
 
-     const playerData: PlayerSyncData = {
-      id: charId,
-      name: character.name,
-      type: character.type,
-      currentHP: character.currentHP,
-      maxHP: character.maxHP || character.currentHP,
-      currentBreaths: character.currentBreaths,
-      maxBreaths: getEffectiveMaxBreaths(character),
-      level: character.level,
-      photoUrl: character.photoUrl,
-      initiative: character.customInitiative || 0
-    };
+     const playerData = buildPlayerSyncData(character);
 
     await updateDoc(sessionRef, {
       [`players.${charId}`]: playerData

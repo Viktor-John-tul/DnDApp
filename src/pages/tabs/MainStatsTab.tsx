@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Shield, Zap, Wind, PersonStanding, Star } from "lucide-react";
 import type { RPGCharacter } from "../../types";
-import { Calculator } from "../../services/rules";
+import { Calculator, resolveEquippedSpecialItemBonuses } from "../../services/rules";
 import { AttributeCard } from "../../components/AttributeCard";
 import { SkillRow } from "../../components/SkillRow";
 import { DiceRollerOverlay } from "../../components/DiceRollerOverlay";
@@ -32,26 +32,57 @@ export function MainStatsTab({ character, onUpdate, readOnly, onRollLogged }: Pr
         diceFace?: number;
     } | null>(null);
 
-  const isEncumbered = character.type === 'demon' ? false : Calculator.isEncumbered(character.strength, character.inventory);
+  const itemBonuses = resolveEquippedSpecialItemBonuses(character.inventory || []);
+  const effectiveStrength = character.strength + itemBonuses.attributeBonuses.strength;
+  const effectiveDexterity = character.dexterity + itemBonuses.attributeBonuses.dexterity;
+  const effectiveConstitution = character.constitution + itemBonuses.attributeBonuses.constitution;
+  const effectiveIntelligence = character.intelligence + itemBonuses.attributeBonuses.intelligence;
+  const effectiveWisdom = character.wisdom + itemBonuses.attributeBonuses.wisdom;
+  const effectiveCharisma = character.charisma + itemBonuses.attributeBonuses.charisma;
+
+  const currentLoad = Calculator.getCurrentLoad(character.inventory || []);
+  const maxLoad = character.type === 'demon'
+    ? Number.POSITIVE_INFINITY
+    : Calculator.getMaxLoad(effectiveStrength) + itemBonuses.carryCapacityBonus;
+  const isEncumbered = character.type === 'demon' ? false : currentLoad > maxLoad;
   const isSlayer = isSlayerCharacter(character);
   const proficiency = character.customProficiency ?? Calculator.getProficiencyBonus(character.level);
-  const maxHP = character.customMaxHP ?? Calculator.getMaxHP(character.constitution, character.level);
-  const baseAC = character.customAC ?? Calculator.getAC(character.dexterity);
+  const maxHP = Math.max(1, (character.customMaxHP ?? Calculator.getMaxHP(effectiveConstitution, character.level)) + itemBonuses.maxHPBonus);
+  const baseAC = (character.customAC ?? Calculator.getAC(effectiveDexterity)) + itemBonuses.acBonus;
   const acBonus = isSlayer && character.level >= 14 && character.currentHP < maxHP * 0.5 ? 1 : 0;
   const ac = baseAC + acBonus;
-  const initiative = character.customInitiative ?? Calculator.getModifier(character.dexterity);
+  const initiative = (character.customInitiative ?? Calculator.getModifier(effectiveDexterity)) + itemBonuses.initiativeBonus;
   const baseSpeed = isSlayer ? getSlayerBaseSpeed(character.level) : 30;
-  const speed = character.customSpeed ?? Calculator.getSpeed(isEncumbered, baseSpeed);
+  const speed = (character.customSpeed ?? Calculator.getSpeed(isEncumbered, baseSpeed)) + itemBonuses.speedBonus;
+
+  const getCheckBonus = (ability: 'STR' | 'DEX' | 'CON' | 'INT' | 'WIS' | 'CHA') => itemBonuses.checkBonuses[ability] ?? itemBonuses.checkBonuses.all ?? 0;
+  const getSaveBonus = (ability: 'STR' | 'DEX' | 'CON' | 'INT' | 'WIS' | 'CHA') => itemBonuses.saveBonuses[ability] ?? itemBonuses.saveBonuses.all ?? 0;
+  const getSkillBonus = (skill: string) => itemBonuses.skillBonuses[skill.toLowerCase()] ?? itemBonuses.skillBonuses.all ?? 0;
+  const getRollAdvantage = (mode: 'check' | 'save' | 'skill' | 'attack' | 'damage' | 'initiative', abilityOrSkill?: string) => {
+    if (mode === 'attack') return itemBonuses.attackAdvantage;
+    if (mode === 'damage') return itemBonuses.damageAdvantage;
+    if (mode === 'initiative') return itemBonuses.initiativeAdvantage;
+    if (mode === 'check') {
+      const key = (abilityOrSkill || 'all') as 'all' | 'STR' | 'DEX' | 'CON' | 'INT' | 'WIS' | 'CHA';
+      return Boolean(itemBonuses.checkAdvantage[key] || itemBonuses.checkAdvantage.all);
+    }
+    if (mode === 'save') {
+      const key = (abilityOrSkill || 'all') as 'all' | 'STR' | 'DEX' | 'CON' | 'INT' | 'WIS' | 'CHA';
+      return Boolean(itemBonuses.saveAdvantage[key] || itemBonuses.saveAdvantage.all);
+    }
+    const normalizedSkill = (abilityOrSkill || 'all').toLowerCase();
+    return Boolean(itemBonuses.skillAdvantage[normalizedSkill] || itemBonuses.skillAdvantage.all);
+  };
 
   // Handlers
-  const handleRoll = (label: string, modifier: number, requiresDisadvantage = false) => {
+  const handleRoll = (label: string, modifier: number, requiresDisadvantage = false, requiresAdvantage = false) => {
     if (readOnly) return;
     
     // Check Status Effects
     const hasEffectAdvantage = character.statusEffects?.some(e => e.type === 'advantage');
     const hasEffectDisadvantage = character.statusEffects?.some(e => e.type === 'disadvantage');
 
-    const hasAdv = hasEffectAdvantage;
+    const hasAdv = requiresAdvantage || hasEffectAdvantage;
     const hasDis = requiresDisadvantage || hasEffectDisadvantage;
     
     let mode: RollMode = 'normal';
@@ -89,34 +120,34 @@ export function MainStatsTab({ character, onUpdate, readOnly, onRollLogged }: Pr
       {/* Attributes Grid */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         <AttributeCard 
-            title="STR" score={character.strength}
-            onCheck={() => handleRoll("STR Check", Calculator.getModifier(character.strength))} 
-            onSave={() => handleRoll("STR Save", Calculator.getModifier(character.strength) + (character.proficientSavingThrows.includes("STR") ? proficiency : 0))}
+          title="STR" score={effectiveStrength}
+          onCheck={() => handleRoll("STR Check", Calculator.getModifier(effectiveStrength) + getCheckBonus("STR"), false, getRollAdvantage('check', 'STR'))} 
+          onSave={() => handleRoll("STR Save", Calculator.getModifier(effectiveStrength) + (character.proficientSavingThrows.includes("STR") ? proficiency : 0) + getSaveBonus("STR"), false, getRollAdvantage('save', 'STR'))}
         />
         <AttributeCard 
-            title="DEX" score={character.dexterity}
-            onCheck={() => handleRoll("DEX Check", Calculator.getModifier(character.dexterity), isEncumbered)} 
-            onSave={() => handleRoll("DEX Save", Calculator.getModifier(character.dexterity) + (character.proficientSavingThrows.includes("DEX") ? proficiency : 0), isEncumbered)}
+          title="DEX" score={effectiveDexterity}
+          onCheck={() => handleRoll("DEX Check", Calculator.getModifier(effectiveDexterity) + getCheckBonus("DEX"), isEncumbered, getRollAdvantage('check', 'DEX'))} 
+          onSave={() => handleRoll("DEX Save", Calculator.getModifier(effectiveDexterity) + (character.proficientSavingThrows.includes("DEX") ? proficiency : 0) + getSaveBonus("DEX"), isEncumbered, getRollAdvantage('save', 'DEX'))}
         />
         <AttributeCard 
-            title="CON" score={character.constitution}
-            onCheck={() => handleRoll("CON Check", Calculator.getModifier(character.constitution))} 
-            onSave={() => handleRoll("CON Save", Calculator.getModifier(character.constitution) + (character.proficientSavingThrows.includes("CON") ? proficiency : 0))}
+          title="CON" score={effectiveConstitution}
+          onCheck={() => handleRoll("CON Check", Calculator.getModifier(effectiveConstitution) + getCheckBonus("CON"), false, getRollAdvantage('check', 'CON'))} 
+          onSave={() => handleRoll("CON Save", Calculator.getModifier(effectiveConstitution) + (character.proficientSavingThrows.includes("CON") ? proficiency : 0) + getSaveBonus("CON"), false, getRollAdvantage('save', 'CON'))}
         />
         <AttributeCard 
-            title="INT" score={character.intelligence}
-            onCheck={() => handleRoll("INT Check", Calculator.getModifier(character.intelligence))} 
-            onSave={() => handleRoll("INT Save", Calculator.getModifier(character.intelligence) + (character.proficientSavingThrows.includes("INT") ? proficiency : 0))}
+          title="INT" score={effectiveIntelligence}
+          onCheck={() => handleRoll("INT Check", Calculator.getModifier(effectiveIntelligence) + getCheckBonus("INT"), false, getRollAdvantage('check', 'INT'))} 
+          onSave={() => handleRoll("INT Save", Calculator.getModifier(effectiveIntelligence) + (character.proficientSavingThrows.includes("INT") ? proficiency : 0) + getSaveBonus("INT"), false, getRollAdvantage('save', 'INT'))}
         />
         <AttributeCard 
-            title="WIS" score={character.wisdom}
-            onCheck={() => handleRoll("WIS Check", Calculator.getModifier(character.wisdom))} 
-            onSave={() => handleRoll("WIS Save", Calculator.getModifier(character.wisdom) + (character.proficientSavingThrows.includes("WIS") ? proficiency : 0))}
+          title="WIS" score={effectiveWisdom}
+          onCheck={() => handleRoll("WIS Check", Calculator.getModifier(effectiveWisdom) + getCheckBonus("WIS"), false, getRollAdvantage('check', 'WIS'))} 
+          onSave={() => handleRoll("WIS Save", Calculator.getModifier(effectiveWisdom) + (character.proficientSavingThrows.includes("WIS") ? proficiency : 0) + getSaveBonus("WIS"), false, getRollAdvantage('save', 'WIS'))}
         />
         <AttributeCard 
-            title="CHA" score={character.charisma}
-            onCheck={() => handleRoll("CHA Check", Calculator.getModifier(character.charisma))} 
-            onSave={() => handleRoll("CHA Save", Calculator.getModifier(character.charisma) + (character.proficientSavingThrows.includes("CHA") ? proficiency : 0))}
+          title="CHA" score={effectiveCharisma}
+          onCheck={() => handleRoll("CHA Check", Calculator.getModifier(effectiveCharisma) + getCheckBonus("CHA"), false, getRollAdvantage('check', 'CHA'))} 
+          onSave={() => handleRoll("CHA Save", Calculator.getModifier(effectiveCharisma) + (character.proficientSavingThrows.includes("CHA") ? proficiency : 0) + getSaveBonus("CHA"), false, getRollAdvantage('save', 'CHA'))}
         />
       </div>
 
@@ -131,14 +162,15 @@ export function MainStatsTab({ character, onUpdate, readOnly, onRollLogged }: Pr
                 <SkillRow 
                     key={skill}
                     skill={skill}
-                    stats={{str: character.strength, dex: character.dexterity, con: character.constitution, int: character.intelligence, wis: character.wisdom, cha: character.charisma}}
+                    stats={{str: effectiveStrength, dex: effectiveDexterity, con: effectiveConstitution, int: effectiveIntelligence, wis: effectiveWisdom, cha: effectiveCharisma}}
                     proficiencyBonus={proficiency}
                     isProficient={character.proficientSkills.includes(skill)}
                     isEncumbered={isEncumbered}
                     onRoll={() => handleRoll(
                         skill.split("(")[0].trim(), 
-                        Calculator.getSkillBonus(skill, {str: character.strength, dex: character.dexterity, con: character.constitution, int: character.intelligence, wis: character.wisdom, cha: character.charisma}, proficiency, character.proficientSkills.includes(skill)),
-                        Calculator.hasEncumbranceDisadvantage(skill, isEncumbered)
+                      Calculator.getSkillBonus(skill, {str: effectiveStrength, dex: effectiveDexterity, con: effectiveConstitution, int: effectiveIntelligence, wis: effectiveWisdom, cha: effectiveCharisma}, proficiency, character.proficientSkills.includes(skill)) + getSkillBonus(skill),
+                      Calculator.hasEncumbranceDisadvantage(skill, isEncumbered),
+                      getRollAdvantage('skill', skill)
                     )}
                 />
             ))}
