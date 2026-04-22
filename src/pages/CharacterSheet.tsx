@@ -210,7 +210,12 @@ export function CharacterSheet() {
       (participant.initiative || 0) <= 0;
 
     setShowInitiativePrompt(needsInitiativeRoll);
-  }, [activeSession?.combat, character, id]);
+  }, [
+    activeSession?.combat?.phase,
+    activeSession?.combat?.participants.map(p => `${p.id}:${p.initiative || 0}`).join('|'),
+    character?.id,
+    id
+  ]);
   const isReadOnly = (character && user) 
       ? (user.uid !== character.userId && character.type !== 'demon') 
       : true;
