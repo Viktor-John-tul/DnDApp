@@ -15,6 +15,14 @@ import { db } from "./firebase";
 import type { RPGCharacter } from "../types";
 
 const COLLECTION = "characters";
+const MOCK_SUBSCRIBERS = new Set<(char: RPGCharacter | null) => void>();
+
+const cloneMockCharacter = (): RPGCharacter => JSON.parse(JSON.stringify(MOCK_CHARACTER)) as RPGCharacter;
+
+const notifyMockSubscribers = () => {
+  const snapshot = cloneMockCharacter();
+  MOCK_SUBSCRIBERS.forEach((callback) => callback(snapshot));
+};
 
 // --- MOCK DATA FOR DEV MODE ---
 const MOCK_CHARACTER: RPGCharacter = {
@@ -95,7 +103,7 @@ export const CharacterService = {
   async getAll(userId: string) {
     // FORCE RETURN MOCK IF DEV USER
     if (userId === 'dev_user_123') {
-        return [MOCK_CHARACTER];
+        return [cloneMockCharacter()];
     }
 
     try {
@@ -111,7 +119,7 @@ export const CharacterService = {
   async get(id: string) {
     // FORCE RETURN MOCK IF DEV
     if (id === 'mock_char_1' || id.startsWith('mock_')) {
-        return MOCK_CHARACTER;
+      return cloneMockCharacter();
     }
 
     try {
@@ -129,6 +137,7 @@ export const CharacterService = {
     if (id === 'mock_char_1' || id.startsWith('mock_')) {
         // Mock Update
         Object.assign(MOCK_CHARACTER, updates);
+      notifyMockSubscribers();
         return;
     }
     
@@ -150,8 +159,11 @@ export const CharacterService = {
 
   subscribe(id: string, callback: (char: RPGCharacter | null) => void) {
       if (id === 'mock_char_1' || id.startsWith('mock_')) {
-          callback(MOCK_CHARACTER);
-          return () => {};
+        MOCK_SUBSCRIBERS.add(callback);
+        callback(cloneMockCharacter());
+        return () => {
+          MOCK_SUBSCRIBERS.delete(callback);
+        };
       }
       
       const docRef = doc(db, COLLECTION, id);

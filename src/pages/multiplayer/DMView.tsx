@@ -311,6 +311,7 @@ export function DMView() {
                   description: newItemParams.description || "Given by DM",
                   quantity: newItemParams.rarity === 'special' ? 1 : newItemParams.quantity,
                   weight: newItemParams.weight,
+                  source: 'dm',
                   rarity: newItemParams.rarity,
                   equipped: false,
                   effects: newItemParams.rarity === 'special' ? sanitizedEffects : undefined

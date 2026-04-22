@@ -60,6 +60,7 @@ export interface InventoryItem {
   description: string;
   quantity: number;
   weight: number;
+  source?: 'dm' | 'player' | 'loot';
   rarity?: ItemRarity;
   equipped?: boolean;
   effects?: ItemEffect[];

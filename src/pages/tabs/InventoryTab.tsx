@@ -30,6 +30,7 @@ export function InventoryTab({ character, onUpdate, readOnly }: Props) {
         description: "",
         quantity: newItem.quantity || 1,
         weight: newItem.weight || 0,
+        source: 'player',
         rarity: 'common'
     };
     onUpdate({ inventory: [...character.inventory, item] });

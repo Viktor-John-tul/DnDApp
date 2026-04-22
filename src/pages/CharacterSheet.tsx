@@ -90,8 +90,10 @@ export function CharacterSheet() {
               );
               
               newItems.forEach(item => {
-                  if (item.description === "Given by DM") {
+                  if (item.source === 'dm' || item.description === "Given by DM") {
                       showToast(`Received item: ${item.name} (x${item.quantity}) from DM`, 'success');
+                  } else {
+                      showToast(`Received item: ${item.name} (x${item.quantity})`, 'success');
                   }
               });
           }
