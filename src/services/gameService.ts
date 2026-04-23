@@ -92,9 +92,36 @@ const getSessionActivityTime = (session: Pick<GameSession, 'createdAt' | 'lastAc
 const isSessionExpired = (session: Pick<GameSession, 'createdAt' | 'lastActive'>, now = Date.now()) =>
   now - getSessionActivityTime(session) >= SESSION_INACTIVITY_MS;
 
+const isPlainObject = (value: unknown): value is Record<string, unknown> => {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return false;
+  }
+
+  const prototype = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
+};
+
+const stripUndefinedDeep = <T>(value: T): T => {
+  if (Array.isArray(value)) {
+    return value
+      .map((entry) => stripUndefinedDeep(entry))
+      .filter((entry) => entry !== undefined) as T;
+  }
+
+  if (isPlainObject(value)) {
+    return Object.fromEntries(
+      Object.entries(value)
+        .filter(([, entry]) => entry !== undefined)
+        .map(([key, entry]) => [key, stripUndefinedDeep(entry)])
+    ) as T;
+  }
+
+  return value;
+};
+
 const touchSession = (sessionRef: DocumentReference, updates: Record<string, unknown>) =>
   updateDoc(sessionRef, {
-    ...updates,
+    ...stripUndefinedDeep(updates),
     lastActive: Date.now()
   });
 
