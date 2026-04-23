@@ -14,6 +14,7 @@ import { LevelProgressionModal } from "../components/LevelProgressionModal";
 import { Shield, Swords, Backpack, Book, ChevronLeft, Loader2, Wifi, ScrollText, Dice6, X, Plus, Minus, ArrowUp, Heart } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { GameService } from "../services/gameService";
+import { SESSION_INACTIVITY_MS } from "../services/gameService";
 import { useToast } from "../context/ToastContext";
 import { DiceRollerOverlay } from "../components/DiceRollerOverlay";
 import { HealthPopup } from "../components/HealthPopup";
@@ -146,7 +147,7 @@ export function CharacterSheet() {
 
     const unsubscribe = GameService.subscribeToSession(character.activeSessionCode, async (session) => {
         if (!session) {
-            showToast("Session ended by DM", "info");
+            showToast("Session ended", "info");
             await CharacterService.update(id, { activeSessionCode: "" });
             setActiveSession(null);
         } else {
@@ -223,6 +224,28 @@ export function CharacterSheet() {
     character?.id,
     id
   ]);
+
+    useEffect(() => {
+            if (!character?.activeSessionCode || !activeSession) return;
+
+            const sessionLastActive = activeSession.lastActive ?? activeSession.createdAt;
+            const remainingMs = SESSION_INACTIVITY_MS - (Date.now() - sessionLastActive);
+
+            if (remainingMs <= 0) {
+                    void GameService.endSession(character.activeSessionCode).catch((error) => {
+                            console.error("Failed to auto-end inactive session", error);
+                    });
+                    return;
+            }
+
+            const timeoutId = window.setTimeout(() => {
+                    void GameService.endSession(character.activeSessionCode as string).catch((error) => {
+                            console.error("Failed to auto-end inactive session", error);
+                    });
+            }, remainingMs);
+
+            return () => window.clearTimeout(timeoutId);
+    }, [activeSession, character?.activeSessionCode]);
   const isReadOnly = (character && user) 
       ? (user.uid !== character.userId && character.type !== 'demon') 
       : true;

@@ -88,6 +88,7 @@ export function CombatTab({ character, onUpdate, readOnly, isDM, session, onRoll
     const isMyTurn = isCombatActive && combat?.participants[combat.currentTurnIndex]?.id === character.id;
     const MAX_ACTIONS = isSlayer && character.level >= 12 ? 3 : 2;
     const actionStateKey = `combat-action-state:${character.id || 'unknown'}:${session?.code || 'no-session'}`;
+    const buffRoundStateKey = `combat-buff-round:${character.id || 'unknown'}:${session?.code || 'no-session'}`;
 
   // Helper: Status Effects
   const removeEffect = (id: string) => {
@@ -596,15 +597,22 @@ export function CombatTab({ character, onUpdate, readOnly, isDM, session, onRoll
             setControlledBreathingUsed(false);
             setFreeFormUsedThisTurn(false);
             setBladeMemoryUsedThisTurn(false);
+                        sessionStorage.removeItem(buffRoundStateKey);
         }
-    }, [combat?.isActive]);
+        }, [combat?.isActive, buffRoundStateKey]);
 
   // Decrement buff timers when round changes in combat
   useEffect(() => {
-    if (!combat?.isActive || !combat.round) return;
+        if (!combat?.isActive || !combat.round) return;
+
+        const lastProcessedRound = Number(sessionStorage.getItem(buffRoundStateKey) || 0);
+        if (combat.round <= lastProcessedRound) return;
     
     const activeBuffs = character.activeBuffs || [];
-    if (activeBuffs.length === 0) return;
+        if (activeBuffs.length === 0) {
+            sessionStorage.setItem(buffRoundStateKey, String(combat.round));
+            return;
+        }
 
     // Decrement all active buff timers
     const updatedBuffs = activeBuffs.map(buff => ({
@@ -620,7 +628,8 @@ export function CombatTab({ character, onUpdate, readOnly, isDM, session, onRoll
         if (hasRoundChange || updatedBuffs.length !== activeBuffs.length) {
       onUpdate({ activeBuffs: updatedBuffs });
     }
-  }, [combat?.round]);
+        sessionStorage.setItem(buffRoundStateKey, String(combat.round));
+    }, [combat?.round, combat?.isActive, buffRoundStateKey, character.activeBuffs, onUpdate]);
 
   const handleEndTurn = async () => {
     if (!session?.code || !combat) return;

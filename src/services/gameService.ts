@@ -6,6 +6,7 @@ import {
   getDoc, 
   onSnapshot, 
   deleteField,
+  type DocumentReference,
   collection,
   query,
   where,
@@ -16,10 +17,13 @@ import type { RPGCharacter, CombatState } from "../types";
 import { Calculator, resolveEquippedSpecialItemBonuses } from "./rules";
 import { getEffectiveMaxBreaths } from "./slayerProgression";
 
+export const SESSION_INACTIVITY_MS = 3 * 60 * 60 * 1000;
+
 export interface GameSession {
   code: string;
   dmId: string;
   createdAt: number;
+  lastActive?: number;
   players: Record<string, PlayerSyncData>;
   combat?: CombatState;
 }
@@ -59,6 +63,17 @@ const buildPlayerSyncData = (character: RPGCharacter): PlayerSyncData => {
   };
 };
 
+const getSessionActivityTime = (session: Pick<GameSession, 'createdAt' | 'lastActive'>) => session.lastActive ?? session.createdAt;
+
+const isSessionExpired = (session: Pick<GameSession, 'createdAt' | 'lastActive'>, now = Date.now()) =>
+  now - getSessionActivityTime(session) >= SESSION_INACTIVITY_MS;
+
+const touchSession = (sessionRef: DocumentReference, updates: Record<string, unknown>) =>
+  updateDoc(sessionRef, {
+    ...updates,
+    lastActive: Date.now()
+  });
+
 export const GameService = {
   // Generate a random 6-character code
   generateCode: () => {
@@ -74,12 +89,7 @@ export const GameService = {
       
       if (querySnapshot.empty) return null;
 
-      // Filter for recent sessions (e.g., created or active within last 3 hours)
-      // Note: A real implementation might update a 'lastActive' timestamp on every action.
-      // For now, we'll check if the session is reasonably recent (e.g. 24 hours) 
-      // AND we rely on the specific "End Session" button to clean up old ones.
-      // But adhering to the user's "3 hour" request:
-      const THREE_HOURS_MS = 3 * 60 * 60 * 1000;
+      // Filter for sessions that are still active within the inactivity window.
       const now = Date.now();
       
       const sessions = querySnapshot.docs.map(doc => ({
@@ -87,18 +97,21 @@ export const GameService = {
         ...doc.data()
       })) as GameSession[];
 
-      // Sort by creation time descending (newest first)
-      sessions.sort((a, b) => b.createdAt - a.createdAt);
-      
-      const newestSession = sessions[0];
-      
-      // If the session is older than 3 hours, strictly speaking we should ignore it
-      // UNLESS we add a heartbeat. For now, let's implement the 3 hour cutoff based on creation.
-      if (now - newestSession.createdAt < THREE_HOURS_MS) {
-        return newestSession.code;
+      const activeSessions = sessions.filter((session) => !isSessionExpired(session, now));
+      const expiredSessions = sessions.filter((session) => isSessionExpired(session, now));
+
+      if (expiredSessions.length > 0) {
+        await Promise.allSettled(expiredSessions.map((session) => GameService.endSession(session.code)));
       }
+
+      // Sort by creation time descending (newest first)
+      activeSessions.sort((a, b) => getSessionActivityTime(b) - getSessionActivityTime(a));
       
-      return null;
+      const newestSession = activeSessions[0];
+
+      if (!newestSession) return null;
+      
+      return newestSession.code;
     } catch (error) {
       console.error("Error resuming session:", error);
       return null;
@@ -127,6 +140,7 @@ export const GameService = {
       code,
       dmId,
       createdAt: Date.now(),
+      lastActive: Date.now(),
       players: {}
     });
     return code;
@@ -144,7 +158,7 @@ export const GameService = {
     const charId = character.id || "unknown_" + Date.now();
     const playerData = buildPlayerSyncData({ ...character, id: charId });
 
-    await updateDoc(sessionRef, {
+    await touchSession(sessionRef, {
       [`players.${charId}`]: playerData
     });
   },
@@ -153,9 +167,20 @@ export const GameService = {
   leaveGame: async (code: string, charId: string) => {
       try {
           const sessionRef = doc(db, "sessions", code);
-          await updateDoc(sessionRef, {
-              [`players.${charId}`]: deleteField()
-          });
+        const sessionSnap = await getDoc(sessionRef);
+        if (!sessionSnap.exists()) return;
+
+        const session = sessionSnap.data() as GameSession;
+        const remainingParticipants = session.combat?.participants.filter((participant) => participant.id !== charId);
+        const updates: Record<string, unknown> = {
+          [`players.${charId}`]: deleteField()
+        };
+
+        if (remainingParticipants) {
+          updates['combat.participants'] = remainingParticipants;
+        }
+
+        await touchSession(sessionRef, updates);
       } catch (err) {
           console.error("Error leaving game:", err);
       }
@@ -169,7 +194,7 @@ export const GameService = {
 
      const playerData = buildPlayerSyncData(character);
 
-    await updateDoc(sessionRef, {
+    await touchSession(sessionRef, {
       [`players.${charId}`]: playerData
     });
   },
@@ -177,7 +202,14 @@ export const GameService = {
   subscribeToSession: (code: string, callback: (data: GameSession | null) => void) => {
     return onSnapshot(doc(db, "sessions", code), (doc) => {
       if (doc.exists()) {
-        callback(doc.data() as GameSession);
+        const session = doc.data() as GameSession;
+        if (isSessionExpired(session)) {
+          GameService.endSession(code).catch((error) => console.error("Failed to auto-end inactive session", error));
+          callback(null);
+          return;
+        }
+
+        callback(session);
       } else {
         callback(null);
       }
@@ -187,7 +219,7 @@ export const GameService = {
   // Combat Methods
   startCombat: async (code: string) => {
     const sessionRef = doc(db, "sessions", code);
-    await updateDoc(sessionRef, {
+    await touchSession(sessionRef, {
       combat: {
         isActive: false,
         phase: 'setup',
@@ -229,7 +261,7 @@ export const GameService = {
         ...(participant.type === 'npc' ? { isHidden: false } : {})
       };
       
-      await updateDoc(sessionRef, {
+      await touchSession(sessionRef, {
         'combat.participants': [...session.combat.participants, newParticipant]
       });
     } catch (error) {
@@ -251,7 +283,7 @@ export const GameService = {
       p.id === participantId ? { ...p, initiative } : p
     );
     
-    await updateDoc(sessionRef, {
+    await touchSession(sessionRef, {
       'combat.participants': participants
     });
   },
@@ -268,7 +300,7 @@ export const GameService = {
     // Sort participants by initiative (highest first)
     const sortedParticipants = [...session.combat.participants].sort((a, b) => b.initiative - a.initiative);
     
-    await updateDoc(sessionRef, {
+    await touchSession(sessionRef, {
       'combat.isActive': true,
       'combat.phase': 'active',
       'combat.round': 1,
@@ -291,12 +323,12 @@ export const GameService = {
     
     if (nextIndex >= participantCount) {
       // New round
-      await updateDoc(sessionRef, {
+      await touchSession(sessionRef, {
         'combat.currentTurnIndex': 0,
         'combat.round': session.combat.round + 1
       });
     } else {
-      await updateDoc(sessionRef, {
+      await touchSession(sessionRef, {
         'combat.currentTurnIndex': nextIndex
       });
     }
@@ -304,7 +336,7 @@ export const GameService = {
 
   endCombat: async (code: string) => {
     const sessionRef = doc(db, "sessions", code);
-    await updateDoc(sessionRef, {
+    await touchSession(sessionRef, {
       combat: deleteField()
     });
   }

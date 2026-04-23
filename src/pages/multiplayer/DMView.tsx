@@ -4,11 +4,12 @@ import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../context/ToastContext";
 import { useConfirm } from "../../context/ConfirmContext";
 import { GameService } from "../../services/gameService";
+import { SESSION_INACTIVITY_MS } from "../../services/gameService";
 import { CampaignService } from "../../services/campaignService";
 import { CharacterService } from "../../services/characterService";
 import type { GameSession } from "../../services/gameService";
 import type { Campaign, StatusEffect, InventoryItem, ItemEffect } from "../../types";
-import { Copy, Users, Power, ArrowLeft, Sparkles, Backpack, FileText, Coins, X, Heart, Wind, Square, CheckSquare, Swords, Lock, Crosshair, ArrowUpCircle } from 'lucide-react';
+import { Copy, Users, Power, ArrowLeft, Sparkles, Backpack, FileText, Coins, X, Heart, Wind, Square, CheckSquare, Swords, Lock, Crosshair, ArrowUpCircle, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from "framer-motion";
 import { CombatManager } from "../../components/CombatManager";
 import { Calculator } from "../../services/rules";
@@ -198,6 +199,7 @@ export function DMView() {
         const unsubscribe = GameService.subscribeToSession(sessionCode, (data) => {
             if (!data) {
                 // Session was deleted remotely
+                showToast("Session ended", "info");
                 setSessionCode(null);
                 setSession(null);
                 setLoading(false);
@@ -212,6 +214,28 @@ export function DMView() {
 
         return () => unsubscribe();
     }, [campaignId, sessionCode]);
+
+  useEffect(() => {
+      if (!sessionCode || !session) return;
+
+      const sessionLastActive = session.lastActive ?? session.createdAt;
+      const remainingMs = SESSION_INACTIVITY_MS - (Date.now() - sessionLastActive);
+
+      if (remainingMs <= 0) {
+          void GameService.endSession(sessionCode).catch((error) => {
+              console.error("Failed to auto-end inactive session", error);
+          });
+          return;
+      }
+
+      const timeoutId = window.setTimeout(() => {
+          void GameService.endSession(sessionCode).catch((error) => {
+              console.error("Failed to auto-end inactive session", error);
+          });
+      }, remainingMs);
+
+      return () => window.clearTimeout(timeoutId);
+  }, [session, sessionCode]);
 
   const handleEndSession = async () => {
       if (!sessionCode) return;
@@ -657,6 +681,32 @@ export function DMView() {
       setTargetIds(newSet);
   };
 
+  const handleRemovePlayerFromSession = async (playerId: string, playerName: string) => {
+      if (!sessionCode) return;
+
+      const isConfirmed = await confirm({
+          title: "Remove Player?",
+          message: `Remove ${playerName} from the active session?`,
+          confirmText: "Remove",
+          variant: "danger"
+      });
+
+      if (!isConfirmed) return;
+
+      try {
+          await GameService.leaveGame(sessionCode, playerId);
+          setTargetIds((current) => {
+              const next = new Set(current);
+              next.delete(playerId);
+              return next;
+          });
+          showToast(`${playerName} removed from the session.`, 'success');
+      } catch (error) {
+          console.error("Failed to remove player", error);
+          showToast("Failed to remove player", 'error');
+      }
+  };
+
     if (loading) {
         return (
             <div className="flex h-screen items-center justify-center bg-gray-50">
@@ -711,12 +761,12 @@ export function DMView() {
                         </div>
                     </div>
               
-              <button 
-                onClick={handleEndSession}
-                className="text-red-400 hover:text-red-300 flex items-center gap-1 text-xs font-bold border border-red-900 bg-red-900/20 px-2 py-1 rounded"
-              >
-                  <Power size={12} /> END
-              </button>
+                        <button
+                            onClick={handleEndSession}
+                            className="text-red-400 hover:text-red-300 flex items-center gap-1 text-xs font-bold border border-red-900 bg-red-900/20 px-2 py-1 rounded"
+                        >
+                            <Power size={12} /> END
+                        </button>
           </div>
 
           <div className="flex justify-between items-end">
@@ -1554,6 +1604,16 @@ export function DMView() {
                          </div>
                          <div className="flex items-center gap-2">
                             <span className="text-xs font-bold bg-gray-200 text-gray-600 px-2 py-1 rounded">Lvl {player.level}</span>
+                            <button
+                                onClick={(event) => {
+                                    event.stopPropagation();
+                                    void handleRemovePlayerFromSession(player.id, player.name);
+                                }}
+                                className="p-1.5 bg-white border border-gray-200 rounded-lg text-gray-400 hover:text-red-500 hover:border-red-200 transition-colors"
+                                title="Remove player from session"
+                            >
+                                <Trash2 size={14} />
+                            </button>
                             <Link to={`/character/${player.id}`} state={{ from: location.pathname }} className="p-1.5 bg-white border border-gray-200 rounded-lg text-gray-400 hover:text-slayer-orange hover:border-slayer-orange transition-colors">
                                 <ArrowLeft size={14} className="rotate-180" />
                             </Link>
