@@ -383,6 +383,7 @@ export function DMView() {
                       y: centerY,
                   },
                   color: existingToken?.color || '#f97316',
+                  photoUrl: existingToken?.photoUrl ?? player.photoUrl ?? null,
                   ownerUserId: player.userId,
                   ownerCharacterId: player.id,
                   isLocked: existingToken?.isLocked || false,

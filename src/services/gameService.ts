@@ -119,6 +119,10 @@ const stripUndefinedDeep = <T>(value: T): T => {
   return value;
 };
 
+const sanitizeFirestorePayload = <T extends Record<string, unknown>>(value: T): T => {
+  return stripUndefinedDeep(value);
+};
+
 const touchSession = (sessionRef: DocumentReference, updates: Record<string, unknown>) =>
   updateDoc(sessionRef, {
     ...stripUndefinedDeep(updates),
@@ -542,7 +546,7 @@ export const GameService = {
       }
 
       transaction.update(sessionRef, {
-        map,
+        ...sanitizeFirestorePayload({ map }),
         lastActive: now,
       });
     });
@@ -588,7 +592,7 @@ export const GameService = {
       map.activeSceneId = sceneId;
 
       transaction.update(sessionRef, {
-        map,
+        ...sanitizeFirestorePayload({ map }),
         lastActive: Date.now(),
       });
     });
@@ -866,7 +870,7 @@ export const GameService = {
         remainingMovementFt: remaining,
         lastMove: {
           position: token.position,
-          remainingMovementFt: token.remainingMovementFt,
+          ...(typeof token.remainingMovementFt === 'number' ? { remainingMovementFt: token.remainingMovementFt } : {}),
           at: Date.now(),
           byUserId: actorUserId,
           turnKey: currentTurnKey,
@@ -876,7 +880,7 @@ export const GameService = {
       scene.updatedAt = Date.now();
 
       transaction.update(sessionRef, {
-        map,
+        ...sanitizeFirestorePayload({ map }),
         lastActive: Date.now(),
       });
 
@@ -924,7 +928,7 @@ export const GameService = {
       scene.updatedAt = Date.now();
 
       transaction.update(sessionRef, {
-        map,
+        ...sanitizeFirestorePayload({ map }),
         lastActive: Date.now(),
       });
     });

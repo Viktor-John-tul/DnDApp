@@ -449,6 +449,7 @@ export function SessionMapPanel({
         kind: selectedToken.kind,
         position: selectedToken.position,
         color: selectedToken.color,
+        photoUrl: selectedToken.photoUrl,
         ownerUserId: selectedToken.ownerUserId,
         ownerCharacterId: selectedToken.ownerCharacterId,
         isLocked: !selectedToken.isLocked,
@@ -484,6 +485,7 @@ export function SessionMapPanel({
         kind: "custom",
         position: { x: activeScene.imageWidth / 2, y: activeScene.imageHeight / 2 },
         color: newMarkerColor,
+        photoUrl: null,
         ownerUserId: actorUserId,
         isLocked: false,
         movementMode: newMarkerMode,
@@ -721,6 +723,7 @@ export function SessionMapPanel({
               const left = activeScene.imageWidth > 0 ? (shownPoint.x / activeScene.imageWidth) * 100 : 0;
               const top = activeScene.imageHeight > 0 ? (shownPoint.y / activeScene.imageHeight) * 100 : 0;
               const selected = selectedTokenId === token.id;
+              const initial = token.label.trim().charAt(0).toUpperCase() || "?";
 
               return (
                 <button
@@ -728,10 +731,23 @@ export function SessionMapPanel({
                   type="button"
                   onClick={() => setSelectedTokenId(token.id)}
                   onPointerDown={(event) => handleTokenPointerDown(event, token)}
-                  className={`absolute -translate-x-1/2 -translate-y-1/2 w-4 h-4 rounded-full border-2 ${selected ? "border-black scale-125" : "border-white"}`}
+                  className={`absolute -translate-x-1/2 -translate-y-1/2 w-10 h-10 rounded-full overflow-hidden border-2 shadow-md ${selected ? "border-black scale-110 z-20" : "border-white z-10"}`}
                   style={{ left: `${left}%`, top: `${top}%`, backgroundColor: token.color || "#f97316" }}
                   title={token.label}
-                />
+                >
+                  {token.photoUrl ? (
+                    <img
+                      src={token.photoUrl}
+                      alt={token.label}
+                      className="w-full h-full object-cover"
+                      draggable={false}
+                    />
+                  ) : (
+                    <span className="w-full h-full flex items-center justify-center text-white text-xs font-black">
+                      {initial}
+                    </span>
+                  )}
+                </button>
               );
             })}
 

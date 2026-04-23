@@ -141,6 +141,7 @@ export interface MapToken {
   kind: MapMarkerKind;
   position: MapPoint;
   color?: string;
+  photoUrl?: string | null;
   ownerUserId?: string;
   ownerCharacterId?: string;
   isLocked?: boolean;
