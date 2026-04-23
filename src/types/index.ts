@@ -105,6 +105,82 @@ export interface CombatState {
   participants: Combatant[];
 }
 
+export interface MapPoint {
+  x: number;
+  y: number;
+}
+
+export interface MapCalibration {
+  pointA: MapPoint;
+  pointB: MapPoint;
+  distanceFt: number;
+  pixelsPerFoot: number;
+}
+
+export type MapMarkerKind = 'character' | 'npc' | 'custom';
+export type MapMovementMode = 'inherit' | 'fixed' | 'unlimited';
+
+export interface MapSpeedModifier {
+  id: string;
+  amountFt: number;
+  source?: string;
+  expiresAtTurnKey?: string;
+}
+
+export interface MapMoveSnapshot {
+  position: MapPoint;
+  remainingMovementFt?: number;
+  at: number;
+  byUserId: string;
+  turnKey?: string;
+}
+
+export interface MapToken {
+  id: string;
+  label: string;
+  kind: MapMarkerKind;
+  position: MapPoint;
+  color?: string;
+  ownerUserId?: string;
+  ownerCharacterId?: string;
+  isLocked?: boolean;
+  movementMode: MapMovementMode;
+  speedFt?: number;
+  remainingMovementFt?: number;
+  speedModifiers?: MapSpeedModifier[];
+  lastMove?: MapMoveSnapshot;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface MapFogStroke {
+  id: string;
+  mode: 'draw' | 'erase';
+  width: number;
+  points: MapPoint[];
+}
+
+export interface MapScene {
+  id: string;
+  name: string;
+  imageUrl: string;
+  imageWidth: number;
+  imageHeight: number;
+  freeRoamEnabled: boolean;
+  revealRadiusFt: number;
+  calibration?: MapCalibration;
+  spawnByTokenId?: Record<string, MapPoint>;
+  fogStrokes?: MapFogStroke[];
+  tokens: Record<string, MapToken>;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface SessionMapState {
+  activeSceneId?: string;
+  scenes: Record<string, MapScene>;
+}
+
 export interface CombatAction {
   id: string;
   name: string;

@@ -9,9 +9,10 @@ import { CombatTab } from "./tabs/CombatTab";
 import { InventoryTab } from "./tabs/InventoryTab";
 import { BioTab } from "./tabs/BioTab";
 import { RollsLogTab } from "./tabs/RollsLogTab";
+import { SessionMapPanel } from "../components/SessionMapPanel";
 import { DeathScreen } from "../components/DeathScreen";
 import { LevelProgressionModal } from "../components/LevelProgressionModal";
-import { Shield, Swords, Backpack, Book, ChevronLeft, Loader2, Wifi, ScrollText, Dice6, X, Plus, Minus, ArrowUp, Heart } from "lucide-react";
+import { Shield, Swords, Backpack, Book, ChevronLeft, Loader2, Wifi, ScrollText, Dice6, X, Plus, Minus, ArrowUp, Heart, Map } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { GameService } from "../services/gameService";
 import { SESSION_INACTIVITY_MS } from "../services/gameService";
@@ -20,7 +21,7 @@ import { DiceRollerOverlay } from "../components/DiceRollerOverlay";
 import { HealthPopup } from "../components/HealthPopup";
 import { Calculator, resolveEquippedSpecialItemBonuses } from "../services/rules";
 
-type TabId = 'stats' | 'combat' | 'inventory' | 'bio' | 'logs';
+type TabId = 'stats' | 'combat' | 'inventory' | 'bio' | 'logs' | 'map';
 
 export function CharacterSheet() {
   const { id } = useParams();
@@ -450,6 +451,13 @@ export function CharacterSheet() {
                     desktop
                 />
                 <TabButton
+                    active={activeTab === 'map'}
+                    onClick={() => setActiveTab('map')}
+                    icon={<Map size={20} />}
+                    label="Map"
+                    desktop
+                />
+                <TabButton
                     active={activeTab === 'logs'}
                     onClick={() => setActiveTab('logs')}
                     icon={<ScrollText size={20} />}
@@ -464,6 +472,15 @@ export function CharacterSheet() {
                 {activeTab === 'combat' && <CombatTab character={character} onUpdate={handleUpdate} readOnly={isReadOnly} isDM={isDM} session={activeSession} onRollLogged={appendRollLog} />}
                 {activeTab === 'inventory' && <InventoryTab character={character} onUpdate={handleUpdate} readOnly={isReadOnly} />}
                 {activeTab === 'bio' && <BioTab character={character} onUpdate={handleUpdate} readOnly={isReadOnly} />}
+                {activeTab === 'map' && (
+                    <SessionMapPanel
+                        session={activeSession}
+                        sessionCode={character.activeSessionCode}
+                        actorUserId={user?.uid}
+                        isDM={isDM}
+                        allowMarkerCreation
+                    />
+                )}
                 {activeTab === 'logs' && <RollsLogTab logs={character.diceRollLogs || []} />}
             </main>
         </div>
@@ -493,6 +510,12 @@ export function CharacterSheet() {
                 onClick={() => setActiveTab('bio')} 
                 icon={<Book size={24} />} 
                 label="Bio" 
+            />
+            <TabButton 
+                active={activeTab === 'map'} 
+                onClick={() => setActiveTab('map')} 
+                icon={<Map size={24} />} 
+                label="Map" 
             />
             <TabButton 
                 active={activeTab === 'logs'} 

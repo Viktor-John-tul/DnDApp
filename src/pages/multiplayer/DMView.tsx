@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../context/ToastContext";
@@ -7,11 +7,13 @@ import { GameService } from "../../services/gameService";
 import { SESSION_INACTIVITY_MS } from "../../services/gameService";
 import { CampaignService } from "../../services/campaignService";
 import { CharacterService } from "../../services/characterService";
+import { StorageService } from "../../services/storageService";
 import type { GameSession } from "../../services/gameService";
-import type { Campaign, StatusEffect, InventoryItem, ItemEffect } from "../../types";
-import { Copy, Users, Power, ArrowLeft, Sparkles, Backpack, FileText, Coins, X, Heart, Wind, Square, CheckSquare, Swords, Lock, Crosshair, ArrowUpCircle, Trash2 } from 'lucide-react';
+import type { Campaign, StatusEffect, InventoryItem, ItemEffect, MapToken } from "../../types";
+import { Copy, Users, Power, ArrowLeft, Sparkles, Backpack, FileText, Coins, X, Heart, Wind, Square, CheckSquare, Swords, Lock, Crosshair, ArrowUpCircle, Trash2, Map } from 'lucide-react';
 import { motion, AnimatePresence } from "framer-motion";
 import { CombatManager } from "../../components/CombatManager";
+import { SessionMapPanel } from "../../components/SessionMapPanel";
 import { Calculator } from "../../services/rules";
 import { getAttributePointGainAtLevel, getHealingSurgesAtLevel } from "../../services/levelProgression";
 import { getSlayerMaxBreaths, isSlayerType } from "../../services/slayerProgression";
@@ -136,7 +138,11 @@ export function DMView() {
   const [selectedEffect, setSelectedEffect] = useState<string | null>(null);
   const [targetIds, setTargetIds] = useState<Set<string>>(new Set());
   const [applyingEffect, setApplyingEffect] = useState(false);
-    const [activeTool, setActiveTool] = useState<'effects' | 'items' | 'gold' | 'notes' | 'health' | 'actions' | 'forms' | 'combat' | 'levels'>('combat');
+        const [activeTool, setActiveTool] = useState<'effects' | 'items' | 'gold' | 'notes' | 'health' | 'actions' | 'forms' | 'combat' | 'levels' | 'map'>('combat');
+    const [creatingScene, setCreatingScene] = useState(false);
+    const [mapBusy, setMapBusy] = useState(false);
+    const [selectedSceneId, setSelectedSceneId] = useState<string | null>(null);
+    const mapFileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Action Adding State
     const [newActionParams, setNewActionParams] = useState({
@@ -163,6 +169,15 @@ export function DMView() {
   // Note Editing State
   const [dmNoteBuffer, setDmNoteBuffer] = useState("");
   const [showNoteEditor, setShowNoteEditor] = useState(false);
+
+    const mapState = session?.map;
+    const scenes = mapState ? Object.values(mapState.scenes || {}) : [];
+
+      useEffect(() => {
+          if (!selectedSceneId && mapState?.activeSceneId) {
+              setSelectedSceneId(mapState.activeSceneId);
+          }
+      }, [mapState?.activeSceneId, selectedSceneId]);
 
     // Load Campaign
     useEffect(() => {
@@ -274,6 +289,120 @@ export function DMView() {
             setStartingSession(false);
         }
     };
+
+  const handleUploadScene = async (file: File) => {
+      if (!sessionCode || !user) return;
+      setCreatingScene(true);
+      try {
+          const upload = await StorageService.uploadMapImage(user.uid, file, campaignId);
+          const sceneName = file.name.replace(/\.[^.]+$/, "").trim() || `Scene ${scenes.length + 1}`;
+          const sceneId = await GameService.createMapScene(sessionCode, {
+              name: sceneName,
+              imageUrl: upload.url,
+              imageWidth: upload.width,
+              imageHeight: upload.height,
+              revealRadiusFt: 30,
+          });
+
+          setSelectedSceneId(sceneId);
+          showToast(
+              `Scene uploaded (${Math.round(upload.originalBytes / 1024)}KB -> ${Math.round(upload.compressedBytes / 1024)}KB)`,
+              "success"
+          );
+      } catch (error) {
+          console.error("Failed to upload map scene", error);
+          showToast("Failed to upload map scene", "error");
+      } finally {
+          setCreatingScene(false);
+      }
+  };
+
+  const handleActivateScene = async (sceneId: string) => {
+      if (!sessionCode) return;
+      setMapBusy(true);
+      try {
+          await GameService.setActiveMapScene(sessionCode, sceneId);
+          setSelectedSceneId(sceneId);
+          showToast("Active scene updated", "success");
+      } catch (error) {
+          console.error("Failed to set active scene", error);
+          showToast("Failed to set active scene", "error");
+      } finally {
+          setMapBusy(false);
+      }
+  };
+
+  const handleToggleFreeRoam = async (sceneId: string, enabled: boolean) => {
+      if (!sessionCode) return;
+      setMapBusy(true);
+      try {
+          await GameService.setMapSceneFreeRoam(sessionCode, sceneId, enabled);
+      } catch (error) {
+          console.error("Failed to update free roam", error);
+          showToast("Failed to update free-roam setting", "error");
+      } finally {
+          setMapBusy(false);
+      }
+  };
+
+  const handleSyncPlayerMarkers = async () => {
+      if (!sessionCode || !user) return;
+      const targetSceneId = selectedSceneId || mapState?.activeSceneId;
+      if (!targetSceneId) {
+          showToast("Create and activate a scene first", "info");
+          return;
+      }
+
+      const scene = mapState?.scenes[targetSceneId];
+      if (!scene) {
+          showToast("Selected scene not found", "error");
+          return;
+      }
+
+      const centerX = scene.imageWidth / 2;
+      const centerY = scene.imageHeight / 2;
+      const players = Object.values(session?.players || {});
+
+      if (players.length === 0) {
+          showToast("No connected players to map", "info");
+          return;
+      }
+
+      setMapBusy(true);
+      try {
+          await Promise.all(players.map(async (player, index) => {
+              const existingToken = Object.values(scene.tokens || {}).find((token) => token.ownerCharacterId === player.id);
+              const tokenId = existingToken?.id || `char_${player.id}`;
+              const offset = index * 38;
+              const token: Omit<MapToken, 'createdAt' | 'updatedAt'> = {
+                  id: tokenId,
+                  label: player.name,
+                  kind: 'character',
+                  position: {
+                      x: centerX + offset,
+                      y: centerY,
+                  },
+                  color: existingToken?.color || '#f97316',
+                  ownerUserId: player.userId,
+                  ownerCharacterId: player.id,
+                  isLocked: existingToken?.isLocked || false,
+                  movementMode: existingToken?.movementMode || 'inherit',
+                  speedFt: existingToken?.speedFt ?? player.speedFt ?? 30,
+                  remainingMovementFt: existingToken?.remainingMovementFt,
+                  speedModifiers: existingToken?.speedModifiers || [],
+              };
+
+              await GameService.upsertMapToken(sessionCode, targetSceneId, token);
+          }));
+
+          showToast("Player markers synced", "success");
+      } catch (error) {
+          console.error("Failed to sync player markers", error);
+          showToast("Failed to sync player markers", "error");
+      } finally {
+          setMapBusy(false);
+      }
+  };
 
   const handleApplyEffect = async () => {
       if (!selectedEffect || targetIds.size === 0) return;
@@ -798,6 +927,13 @@ export function DMView() {
                   label="Combat"
                   color="text-red-600" 
                 />
+                    <ToolTab
+                        active={activeTool === 'map'}
+                        onClick={() => setActiveTool('map')}
+                        icon={<Map size={18} />}
+                        label="Map"
+                        color="text-emerald-600"
+                    />
                <ToolTab 
                   active={activeTool === 'effects'} 
                   onClick={() => setActiveTool('effects')} 
@@ -867,6 +1003,102 @@ export function DMView() {
                            <CombatManager session={session} sessionCode={sessionCode} />
                        </motion.div>
                    )}
+
+                                     {activeTool === 'map' && sessionCode && session && (
+                                            <motion.div
+                                                key="map"
+                                                initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
+                                                className="space-y-4"
+                                            >
+                                                <input
+                                                    ref={mapFileInputRef}
+                                                    type="file"
+                                                    accept="image/*"
+                                                    className="hidden"
+                                                    onChange={(event) => {
+                                                        const file = event.target.files?.[0];
+                                                        if (!file) return;
+                                                        void handleUploadScene(file);
+                                                        event.target.value = '';
+                                                    }}
+                                                />
+
+                                                <div className="flex flex-wrap gap-2">
+                                                    <button
+                                                        onClick={() => mapFileInputRef.current?.click()}
+                                                        disabled={creatingScene}
+                                                        className="px-4 py-2 rounded-xl bg-emerald-600 text-white font-bold disabled:opacity-60"
+                                                    >
+                                                        {creatingScene ? 'Uploading...' : 'Upload New Scene'}
+                                                    </button>
+                                                    <button
+                                                        onClick={handleSyncPlayerMarkers}
+                                                        disabled={mapBusy || scenes.length === 0}
+                                                        className="px-4 py-2 rounded-xl bg-gray-900 text-white font-bold disabled:opacity-60"
+                                                    >
+                                                        Sync Player Markers
+                                                    </button>
+                                                </div>
+
+                                                <div className="grid gap-3">
+                                                    {scenes.length === 0 && (
+                                                        <div className="rounded-xl border border-dashed border-gray-300 bg-white p-5 text-sm text-gray-500">
+                                                            No scenes uploaded yet. Upload a map image to create your first scene.
+                                                        </div>
+                                                    )}
+
+                                                    {scenes.map((scene) => {
+                                                        const isActive = mapState?.activeSceneId === scene.id;
+                                                        const tokenCount = Object.keys(scene.tokens || {}).length;
+
+                                                        return (
+                                                            <div key={scene.id} className="bg-white rounded-xl border border-gray-200 p-4">
+                                                                <div className="flex items-start justify-between gap-3">
+                                                                    <div>
+                                                                        <div className="font-bold text-gray-900">{scene.name}</div>
+                                                                        <div className="text-xs text-gray-500 mt-1">
+                                                                            {scene.imageWidth} x {scene.imageHeight} • {tokenCount} markers
+                                                                        </div>
+                                                                    </div>
+                                                                    <div className="text-xs font-bold uppercase tracking-wider">
+                                                                        {isActive ? (
+                                                                            <span className="text-green-600">Active</span>
+                                                                        ) : (
+                                                                            <span className="text-gray-400">Idle</span>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+
+                                                                <div className="mt-3 flex flex-wrap gap-2">
+                                                                    <button
+                                                                        onClick={() => handleActivateScene(scene.id)}
+                                                                        disabled={isActive || mapBusy}
+                                                                        className="px-3 py-2 rounded-lg border border-gray-300 text-sm font-bold disabled:opacity-60"
+                                                                    >
+                                                                        Set Active
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => handleToggleFreeRoam(scene.id, !scene.freeRoamEnabled)}
+                                                                        disabled={mapBusy}
+                                                                        className={`px-3 py-2 rounded-lg text-sm font-bold ${scene.freeRoamEnabled ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-gray-100 text-gray-700 border border-gray-200'}`}
+                                                                    >
+                                                                        Free-Roam: {scene.freeRoamEnabled ? 'ON' : 'OFF'}
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+
+                                                <SessionMapPanel
+                                                    session={session}
+                                                    sessionCode={sessionCode}
+                                                    actorUserId={user?.uid}
+                                                    isDM
+                                                    allowMarkerCreation
+                                                />
+                                            </motion.div>
+                                     )}
                    
                    {activeTool === 'effects' && (
                        <motion.div 

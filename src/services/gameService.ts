@@ -6,6 +6,7 @@ import {
   getDoc, 
   onSnapshot, 
   deleteField,
+  runTransaction,
   type DocumentReference,
   collection,
   query,
@@ -13,9 +14,10 @@ import {
   getDocs,
   deleteDoc
 } from "firebase/firestore";
-import type { RPGCharacter, CombatState } from "../types";
+import type { RPGCharacter, CombatState, MapPoint, MapScene, MapToken, SessionMapState } from "../types";
 import { Calculator, resolveEquippedSpecialItemBonuses } from "./rules";
 import { getEffectiveMaxBreaths } from "./slayerProgression";
+import { getSlayerBaseSpeed } from "./slayerProgression";
 
 export const SESSION_INACTIVITY_MS = 3 * 60 * 60 * 1000;
 
@@ -26,10 +28,26 @@ export interface GameSession {
   lastActive?: number;
   players: Record<string, PlayerSyncData>;
   combat?: CombatState;
+  map?: SessionMapState;
+}
+
+interface CreateMapSceneInput {
+  name: string;
+  imageUrl: string;
+  imageWidth: number;
+  imageHeight: number;
+  revealRadiusFt?: number;
+}
+
+interface MapMoveResult {
+  clamped: boolean;
+  remainingMovementFt?: number;
+  movedDistancePx: number;
 }
 
 export interface PlayerSyncData {
   id: string;
+  userId: string;
   name: string;
   type?: 'slayer' | 'demon' | 'human';
   currentHP: number;
@@ -39,6 +57,7 @@ export interface PlayerSyncData {
   level: number;
   photoUrl?: string | null;
   initiative?: number;
+  speedFt?: number;
 }
 
 const buildPlayerSyncData = (character: RPGCharacter): PlayerSyncData => {
@@ -48,9 +67,13 @@ const buildPlayerSyncData = (character: RPGCharacter): PlayerSyncData => {
   const baseInitiative = character.customInitiative ?? Calculator.getModifier(effectiveDexterity);
   const baseMaxHP = character.customMaxHP ?? Calculator.getMaxHP(effectiveConstitution, character.level);
   const maxHP = Math.max(1, baseMaxHP + itemBonuses.maxHPBonus);
+  const baseSpeed = character.customSpeed
+    ?? (character.type === 'slayer' ? getSlayerBaseSpeed(character.level) : 30);
+  const speedFt = Math.max(0, baseSpeed + itemBonuses.speedBonus);
 
   return {
     id: character.id || "unknown_" + Date.now(),
+    userId: character.userId,
     name: character.name,
     ...(character.type ? { type: character.type } : {}),
     currentHP: Math.min(character.currentHP, maxHP),
@@ -59,7 +82,8 @@ const buildPlayerSyncData = (character: RPGCharacter): PlayerSyncData => {
     maxBreaths: getEffectiveMaxBreaths(character),
     level: character.level,
     photoUrl: character.photoUrl,
-    initiative: baseInitiative + itemBonuses.initiativeBonus
+    initiative: baseInitiative + itemBonuses.initiativeBonus,
+    speedFt
   };
 };
 
@@ -73,6 +97,90 @@ const touchSession = (sessionRef: DocumentReference, updates: Record<string, unk
     ...updates,
     lastActive: Date.now()
   });
+
+const emptyMapState = (): SessionMapState => ({
+  scenes: {},
+});
+
+const getCurrentTurnKey = (session: GameSession) => {
+  if (!session.combat?.isActive) return undefined;
+  return `${session.combat.round}:${session.combat.currentTurnIndex}`;
+};
+
+const getPixelsPerFoot = (scene: MapScene) => {
+  if (scene.calibration?.pixelsPerFoot && scene.calibration.pixelsPerFoot > 0) {
+    return scene.calibration.pixelsPerFoot;
+  }
+  return 10;
+};
+
+const getDistance = (a: MapPoint, b: MapPoint) => {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  return Math.sqrt(dx * dx + dy * dy);
+};
+
+const clampPointToRadius = (origin: MapPoint, target: MapPoint, maxDistance: number): { point: MapPoint; clamped: boolean } => {
+  const dx = target.x - origin.x;
+  const dy = target.y - origin.y;
+  const distance = Math.sqrt(dx * dx + dy * dy);
+
+  if (distance <= maxDistance || maxDistance <= 0) {
+    return { point: target, clamped: false };
+  }
+
+  const ratio = maxDistance / distance;
+  return {
+    point: {
+      x: origin.x + dx * ratio,
+      y: origin.y + dy * ratio,
+    },
+    clamped: true,
+  };
+};
+
+const resolveTokenSpeedFt = (token: MapToken) => {
+  if (token.movementMode === 'unlimited') return Number.POSITIVE_INFINITY;
+  const base = token.speedFt ?? 30;
+  const modifier = (token.speedModifiers || []).reduce((sum, entry) => sum + (entry.amountFt || 0), 0);
+  return Math.max(0, base + modifier);
+};
+
+const resetCurrentTurnTokenMovement = (session: GameSession) => {
+  const map = session.map;
+  const combat = session.combat;
+  if (!map?.activeSceneId || !combat?.isActive) return map;
+
+  const activeParticipant = combat.participants[combat.currentTurnIndex];
+  if (!activeParticipant) return map;
+
+  const scene = map.scenes[map.activeSceneId];
+  if (!scene) return map;
+
+  const token = Object.values(scene.tokens).find(
+    (candidate) => candidate.ownerCharacterId === activeParticipant.id
+  );
+
+  if (!token) return map;
+
+  const nextToken = {
+    ...token,
+    remainingMovementFt: resolveTokenSpeedFt(token),
+    lastMove: undefined,
+    updatedAt: Date.now(),
+  };
+
+  map.scenes[map.activeSceneId] = {
+    ...scene,
+    tokens: {
+      ...scene.tokens,
+      [token.id]: nextToken,
+    },
+    updatedAt: Date.now(),
+  };
+
+  return map;
+};
 
 export const GameService = {
   // Generate a random 6-character code
@@ -299,13 +407,27 @@ export const GameService = {
     
     // Sort participants by initiative (highest first)
     const sortedParticipants = [...session.combat.participants].sort((a, b) => b.initiative - a.initiative);
-    
+
+    const updatedSession: GameSession = {
+      ...session,
+      combat: {
+        ...session.combat,
+        isActive: true,
+        phase: 'active',
+        round: 1,
+        currentTurnIndex: 0,
+        participants: sortedParticipants,
+      },
+    };
+    const nextMap = resetCurrentTurnTokenMovement(updatedSession);
+
     await touchSession(sessionRef, {
       'combat.isActive': true,
       'combat.phase': 'active',
       'combat.round': 1,
       'combat.currentTurnIndex': 0,
-      'combat.participants': sortedParticipants
+      'combat.participants': sortedParticipants,
+      ...(nextMap ? { map: nextMap } : {})
     });
   },
 
@@ -320,16 +442,36 @@ export const GameService = {
     
     const nextIndex = session.combat.currentTurnIndex + 1;
     const participantCount = session.combat.participants.length;
-    
+
     if (nextIndex >= participantCount) {
-      // New round
+      const updatedSession: GameSession = {
+        ...session,
+        combat: {
+          ...session.combat,
+          currentTurnIndex: 0,
+          round: session.combat.round + 1,
+        },
+      };
+      const nextMap = resetCurrentTurnTokenMovement(updatedSession);
+
       await touchSession(sessionRef, {
         'combat.currentTurnIndex': 0,
-        'combat.round': session.combat.round + 1
+        'combat.round': session.combat.round + 1,
+        ...(nextMap ? { map: nextMap } : {})
       });
     } else {
+      const updatedSession: GameSession = {
+        ...session,
+        combat: {
+          ...session.combat,
+          currentTurnIndex: nextIndex,
+        },
+      };
+      const nextMap = resetCurrentTurnTokenMovement(updatedSession);
+
       await touchSession(sessionRef, {
-        'combat.currentTurnIndex': nextIndex
+        'combat.currentTurnIndex': nextIndex,
+        ...(nextMap ? { map: nextMap } : {})
       });
     }
   },
@@ -338,6 +480,260 @@ export const GameService = {
     const sessionRef = doc(db, "sessions", code);
     await touchSession(sessionRef, {
       combat: deleteField()
+    });
+  },
+
+  createMapScene: async (code: string, input: CreateMapSceneInput) => {
+    const sessionRef = doc(db, "sessions", code);
+    const sceneId = crypto.randomUUID();
+    const now = Date.now();
+
+    await runTransaction(db, async (transaction) => {
+      const sessionSnap = await transaction.get(sessionRef);
+      if (!sessionSnap.exists()) {
+        throw new Error("Session not found");
+      }
+
+      const session = sessionSnap.data() as GameSession;
+      const map = session.map || emptyMapState();
+      const scene: MapScene = {
+        id: sceneId,
+        name: input.name,
+        imageUrl: input.imageUrl,
+        imageWidth: input.imageWidth,
+        imageHeight: input.imageHeight,
+        freeRoamEnabled: true,
+        revealRadiusFt: input.revealRadiusFt ?? 30,
+        tokens: {},
+        createdAt: now,
+        updatedAt: now,
+      };
+
+      map.scenes[sceneId] = scene;
+      if (!map.activeSceneId) {
+        map.activeSceneId = sceneId;
+      }
+
+      transaction.update(sessionRef, {
+        map,
+        lastActive: now,
+      });
+    });
+
+    return sceneId;
+  },
+
+  setActiveMapScene: async (code: string, sceneId: string) => {
+    const sessionRef = doc(db, "sessions", code);
+
+    await runTransaction(db, async (transaction) => {
+      const sessionSnap = await transaction.get(sessionRef);
+      if (!sessionSnap.exists()) throw new Error("Session not found");
+
+      const session = sessionSnap.data() as GameSession;
+      const map = session.map || emptyMapState();
+      const nextScene = map.scenes[sceneId];
+
+      if (!nextScene) {
+        throw new Error("Scene not found");
+      }
+
+      const nextTokens = Object.fromEntries(
+        Object.entries(nextScene.tokens).map(([tokenId, token]) => {
+          const spawn = nextScene.spawnByTokenId?.[tokenId];
+          if (!spawn) return [tokenId, token];
+          return [
+            tokenId,
+            {
+              ...token,
+              position: spawn,
+              updatedAt: Date.now(),
+            },
+          ];
+        })
+      );
+
+      map.scenes[sceneId] = {
+        ...nextScene,
+        tokens: nextTokens,
+        updatedAt: Date.now(),
+      };
+      map.activeSceneId = sceneId;
+
+      transaction.update(sessionRef, {
+        map,
+        lastActive: Date.now(),
+      });
+    });
+  },
+
+  setMapSceneFreeRoam: async (code: string, sceneId: string, freeRoamEnabled: boolean) => {
+    const sessionRef = doc(db, "sessions", code);
+    const sessionSnap = await getDoc(sessionRef);
+    if (!sessionSnap.exists()) throw new Error("Session not found");
+
+    const session = sessionSnap.data() as GameSession;
+    const map = session.map || emptyMapState();
+    const scene = map.scenes[sceneId];
+    if (!scene) throw new Error("Scene not found");
+
+    map.scenes[sceneId] = {
+      ...scene,
+      freeRoamEnabled,
+      updatedAt: Date.now(),
+    };
+
+    await touchSession(sessionRef, { map });
+  },
+
+  upsertMapToken: async (code: string, sceneId: string, token: Omit<MapToken, 'createdAt' | 'updatedAt'>) => {
+    const sessionRef = doc(db, "sessions", code);
+    const sessionSnap = await getDoc(sessionRef);
+    if (!sessionSnap.exists()) throw new Error("Session not found");
+
+    const session = sessionSnap.data() as GameSession;
+    const map = session.map || emptyMapState();
+    const scene = map.scenes[sceneId];
+    if (!scene) throw new Error("Scene not found");
+
+    const previous = scene.tokens[token.id];
+    const now = Date.now();
+    scene.tokens[token.id] = {
+      ...token,
+      createdAt: previous?.createdAt || now,
+      updatedAt: now,
+    };
+    scene.updatedAt = now;
+
+    await touchSession(sessionRef, { map });
+  },
+
+  moveMapToken: async (code: string, actorUserId: string, tokenId: string, target: MapPoint): Promise<MapMoveResult> => {
+    const sessionRef = doc(db, "sessions", code);
+
+    return runTransaction(db, async (transaction) => {
+      const sessionSnap = await transaction.get(sessionRef);
+      if (!sessionSnap.exists()) throw new Error("Session not found");
+
+      const session = sessionSnap.data() as GameSession;
+      const map = session.map;
+      if (!map?.activeSceneId) throw new Error("No active map scene");
+
+      const scene = map.scenes[map.activeSceneId];
+      if (!scene) throw new Error("Active scene not found");
+
+      const token = scene.tokens[tokenId];
+      if (!token) throw new Error("Token not found");
+
+      const isDM = session.dmId === actorUserId;
+      const ownsToken = token.ownerUserId === actorUserId;
+      if (!isDM && !ownsToken) {
+        throw new Error("You cannot move this token");
+      }
+      if (token.isLocked && !isDM) {
+        throw new Error("Token is locked by DM");
+      }
+
+      const inCombat = !!session.combat?.isActive;
+      const currentTurnKey = getCurrentTurnKey(session);
+      const isMyTurn = inCombat
+        ? session.combat?.participants[session.combat.currentTurnIndex]?.id === token.ownerCharacterId
+        : true;
+
+      if (!inCombat && !scene.freeRoamEnabled && !isDM) {
+        throw new Error("Free-roam is disabled by the DM");
+      }
+
+      if (inCombat && !isMyTurn && !isDM) {
+        throw new Error("You can move only on your turn");
+      }
+
+      let nextPoint = target;
+      let clamped = false;
+      let movedDistancePx = getDistance(token.position, target);
+      let remaining = token.remainingMovementFt;
+
+      if (inCombat && token.movementMode !== 'unlimited') {
+        const pixelsPerFoot = getPixelsPerFoot(scene);
+        const movementBudgetFt = typeof token.remainingMovementFt === 'number'
+          ? token.remainingMovementFt
+          : resolveTokenSpeedFt(token);
+        const maxDistancePx = movementBudgetFt * pixelsPerFoot;
+        const clampedResult = clampPointToRadius(token.position, target, maxDistancePx);
+        nextPoint = clampedResult.point;
+        clamped = clampedResult.clamped;
+        movedDistancePx = getDistance(token.position, nextPoint);
+        const movedFt = movedDistancePx / pixelsPerFoot;
+        remaining = Math.max(0, movementBudgetFt - movedFt);
+      }
+
+      scene.tokens[tokenId] = {
+        ...token,
+        position: nextPoint,
+        remainingMovementFt: remaining,
+        lastMove: {
+          position: token.position,
+          remainingMovementFt: token.remainingMovementFt,
+          at: Date.now(),
+          byUserId: actorUserId,
+          turnKey: currentTurnKey,
+        },
+        updatedAt: Date.now(),
+      };
+      scene.updatedAt = Date.now();
+
+      transaction.update(sessionRef, {
+        map,
+        lastActive: Date.now(),
+      });
+
+      return {
+        clamped,
+        remainingMovementFt: remaining,
+        movedDistancePx,
+      };
+    });
+  },
+
+  undoTokenMove: async (code: string, actorUserId: string, tokenId: string) => {
+    const sessionRef = doc(db, "sessions", code);
+
+    await runTransaction(db, async (transaction) => {
+      const sessionSnap = await transaction.get(sessionRef);
+      if (!sessionSnap.exists()) throw new Error("Session not found");
+
+      const session = sessionSnap.data() as GameSession;
+      const map = session.map;
+      if (!map?.activeSceneId) throw new Error("No active map scene");
+
+      const scene = map.scenes[map.activeSceneId];
+      if (!scene) throw new Error("Active scene not found");
+
+      const token = scene.tokens[tokenId];
+      if (!token?.lastMove) throw new Error("No move to undo");
+
+      const isDM = session.dmId === actorUserId;
+      const ownsToken = token.ownerUserId === actorUserId;
+      if (!isDM && !ownsToken) throw new Error("You cannot undo this token move");
+
+      const currentTurnKey = getCurrentTurnKey(session);
+      if (session.combat?.isActive && token.lastMove.turnKey && token.lastMove.turnKey !== currentTurnKey) {
+        throw new Error("Undo window expired");
+      }
+
+      scene.tokens[tokenId] = {
+        ...token,
+        position: token.lastMove.position,
+        remainingMovementFt: token.lastMove.remainingMovementFt,
+        lastMove: undefined,
+        updatedAt: Date.now(),
+      };
+      scene.updatedAt = Date.now();
+
+      transaction.update(sessionRef, {
+        map,
+        lastActive: Date.now(),
+      });
     });
   }
 };
