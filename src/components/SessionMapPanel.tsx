@@ -12,6 +12,7 @@ interface Props {
   actorUserId?: string;
   isDM?: boolean;
   allowMarkerCreation?: boolean;
+  showAdminTools?: boolean;
 }
 
 const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
@@ -22,6 +23,7 @@ export function SessionMapPanel({
   actorUserId,
   isDM = false,
   allowMarkerCreation = true,
+  showAdminTools = false,
 }: Props) {
   const { showToast } = useToast();
   const mapState = session?.map;
@@ -78,7 +80,7 @@ export function SessionMapPanel({
   const ownedTokens = tokens.filter((token) => token.ownerUserId === actorUserId);
   const sessionPlayers = Object.values(session?.players || {});
   const previewTokens = isDM
-    ? (fogPreviewUserId ? tokens.filter((token) => token.ownerUserId === fogPreviewUserId) : [])
+    ? (showAdminTools && fogPreviewUserId ? tokens.filter((token) => token.ownerUserId === fogPreviewUserId) : [])
     : ownedTokens;
 
   const selectedTokenSpeedFt = selectedToken?.movementMode === "unlimited"
@@ -180,7 +182,7 @@ export function SessionMapPanel({
   };
 
   const handleViewportPointerDown = (event: ReactPointerEvent) => {
-    if (isDM && spawnPlacementMode && selectedToken && sessionCode && activeScene) {
+    if (showAdminTools && spawnPlacementMode && selectedToken && sessionCode && activeScene) {
       const point = toScenePoint(event);
       if (!point) return;
       setBusy(true);
@@ -228,7 +230,7 @@ export function SessionMapPanel({
   };
 
   const handleFogPointerUp = async () => {
-    if (!isDM || fogMode === "off" || !sessionCode || !activeScene) return;
+    if (!showAdminTools || fogMode === "off" || !sessionCode || !activeScene) return;
     if (pendingFogPoints.length < 2) {
       setPendingFogPoints([]);
       return;
@@ -254,7 +256,7 @@ export function SessionMapPanel({
   };
 
   const handleClearFog = async () => {
-    if (!isDM || !sessionCode || !activeScene) return;
+    if (!showAdminTools || !sessionCode || !activeScene) return;
     setBusy(true);
     try {
       await GameService.clearMapFogStrokes(sessionCode, activeScene.id);
@@ -268,7 +270,7 @@ export function SessionMapPanel({
   };
 
   const handleUndoFogStroke = async () => {
-    if (!isDM || !sessionCode || !activeScene) return;
+    if (!showAdminTools || !sessionCode || !activeScene) return;
     setBusy(true);
     try {
       await GameService.undoLastMapFogStroke(sessionCode, activeScene.id);
@@ -282,7 +284,7 @@ export function SessionMapPanel({
   };
 
   const handleSetAllSpawnsFromCurrentPositions = async () => {
-    if (!isDM || !sessionCode || !activeScene) return;
+    if (!showAdminTools || !sessionCode || !activeScene) return;
     setBusy(true);
     try {
       await GameService.setAllSceneSpawnsFromCurrentTokens(sessionCode, activeScene.id);
@@ -296,7 +298,7 @@ export function SessionMapPanel({
   };
 
   const handleSetSpawnToTokenPosition = async () => {
-    if (!sessionCode || !activeScene || !selectedToken) return;
+    if (!sessionCode || !activeScene || !selectedToken || !showAdminTools) return;
     setBusy(true);
     try {
       await GameService.setMapSceneSpawnPoint(sessionCode, activeScene.id, selectedToken.id, selectedToken.position);
@@ -310,7 +312,7 @@ export function SessionMapPanel({
   };
 
   const handleClearSpawn = async () => {
-    if (!sessionCode || !activeScene || !selectedToken) return;
+    if (!sessionCode || !activeScene || !selectedToken || !showAdminTools) return;
     setBusy(true);
     try {
       await GameService.clearMapSceneSpawnPoint(sessionCode, activeScene.id, selectedToken.id);
@@ -438,7 +440,7 @@ export function SessionMapPanel({
   };
 
   const handleToggleLock = async () => {
-    if (!sessionCode || !activeScene || !selectedToken || !isDM) return;
+    if (!sessionCode || !activeScene || !selectedToken || !showAdminTools) return;
     setBusy(true);
     try {
       const nextToken: Omit<MapToken, "createdAt" | "updatedAt"> = {
@@ -524,7 +526,7 @@ export function SessionMapPanel({
           </div>
         </div>
 
-        {isDM && (
+        {showAdminTools && (
           <div className="mb-3 rounded-xl border border-gray-200 bg-gray-50 p-3 space-y-3">
             <div className="flex flex-wrap items-center gap-2">
               <button
@@ -664,6 +666,11 @@ export function SessionMapPanel({
             draggable={false}
           />
           <div className="absolute inset-0">
+            <canvas
+              ref={fogCanvasRef}
+              className="absolute inset-0 w-full h-full pointer-events-none"
+            />
+
             {inCombat && selectedToken && selectedToken.movementMode !== "unlimited" && movementRadiusPx && (
               <div
                 className="absolute -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-sky-500/80 bg-sky-300/20"
@@ -802,7 +809,7 @@ export function SessionMapPanel({
               <RotateCcw size={14} /> Undo
             </button>
 
-            {isDM && (
+            {showAdminTools && (
               <button
                 onClick={handleToggleLock}
                 disabled={busy}
@@ -813,7 +820,7 @@ export function SessionMapPanel({
               </button>
             )}
 
-            {isDM && (
+            {showAdminTools && (
               <button
                 onClick={handleSetSpawnToTokenPosition}
                 disabled={busy}
@@ -823,7 +830,7 @@ export function SessionMapPanel({
               </button>
             )}
 
-            {isDM && (
+            {showAdminTools && (
               <button
                 onClick={() => setSpawnPlacementMode((prev) => !prev)}
                 disabled={busy}
@@ -833,7 +840,7 @@ export function SessionMapPanel({
               </button>
             )}
 
-            {isDM && (
+            {showAdminTools && (
               <button
                 onClick={handleClearSpawn}
                 disabled={busy}
@@ -843,7 +850,7 @@ export function SessionMapPanel({
               </button>
             )}
 
-            {isDM && (
+            {showAdminTools && (
               <button
                 onClick={handleSetAllSpawnsFromCurrentPositions}
                 disabled={busy}
@@ -854,7 +861,7 @@ export function SessionMapPanel({
             )}
           </div>
 
-          {isDM && spawnPlacementMode && (
+          {showAdminTools && spawnPlacementMode && (
             <div className="text-xs text-emerald-700 font-medium">
               Click on the map to place spawn for the selected token.
             </div>

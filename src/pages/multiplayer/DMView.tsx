@@ -1096,6 +1096,7 @@ export function DMView() {
                                                     actorUserId={user?.uid}
                                                     isDM
                                                     allowMarkerCreation
+                                                    showAdminTools
                                                 />
                                             </motion.div>
                                      )}
