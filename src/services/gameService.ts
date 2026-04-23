@@ -14,7 +14,7 @@ import {
   getDocs,
   deleteDoc
 } from "firebase/firestore";
-import type { RPGCharacter, CombatState, MapPoint, MapScene, MapToken, SessionMapState } from "../types";
+import type { RPGCharacter, CombatState, MapCalibration, MapFogStroke, MapPoint, MapScene, MapToken, SessionMapState } from "../types";
 import { Calculator, resolveEquippedSpecialItemBonuses } from "./rules";
 import { getEffectiveMaxBreaths } from "./slayerProgression";
 import { getSlayerBaseSpeed } from "./slayerProgression";
@@ -580,6 +580,172 @@ export const GameService = {
     map.scenes[sceneId] = {
       ...scene,
       freeRoamEnabled,
+      updatedAt: Date.now(),
+    };
+
+    await touchSession(sessionRef, { map });
+  },
+
+  setMapSceneCalibration: async (code: string, sceneId: string, calibration: MapCalibration) => {
+    const sessionRef = doc(db, "sessions", code);
+    const sessionSnap = await getDoc(sessionRef);
+    if (!sessionSnap.exists()) throw new Error("Session not found");
+
+    const session = sessionSnap.data() as GameSession;
+    const map = session.map || emptyMapState();
+    const scene = map.scenes[sceneId];
+    if (!scene) throw new Error("Scene not found");
+
+    map.scenes[sceneId] = {
+      ...scene,
+      calibration,
+      updatedAt: Date.now(),
+    };
+
+    await touchSession(sessionRef, { map });
+  },
+
+  setMapSceneRevealRadius: async (code: string, sceneId: string, revealRadiusFt: number) => {
+    const sessionRef = doc(db, "sessions", code);
+    const sessionSnap = await getDoc(sessionRef);
+    if (!sessionSnap.exists()) throw new Error("Session not found");
+
+    const session = sessionSnap.data() as GameSession;
+    const map = session.map || emptyMapState();
+    const scene = map.scenes[sceneId];
+    if (!scene) throw new Error("Scene not found");
+
+    map.scenes[sceneId] = {
+      ...scene,
+      revealRadiusFt: Math.max(1, revealRadiusFt),
+      updatedAt: Date.now(),
+    };
+
+    await touchSession(sessionRef, { map });
+  },
+
+  setMapSceneSpawnPoint: async (code: string, sceneId: string, tokenId: string, point: MapPoint) => {
+    const sessionRef = doc(db, "sessions", code);
+    const sessionSnap = await getDoc(sessionRef);
+    if (!sessionSnap.exists()) throw new Error("Session not found");
+
+    const session = sessionSnap.data() as GameSession;
+    const map = session.map || emptyMapState();
+    const scene = map.scenes[sceneId];
+    if (!scene) throw new Error("Scene not found");
+
+    map.scenes[sceneId] = {
+      ...scene,
+      spawnByTokenId: {
+        ...(scene.spawnByTokenId || {}),
+        [tokenId]: point,
+      },
+      updatedAt: Date.now(),
+    };
+
+    await touchSession(sessionRef, { map });
+  },
+
+  clearMapSceneSpawnPoint: async (code: string, sceneId: string, tokenId: string) => {
+    const sessionRef = doc(db, "sessions", code);
+    const sessionSnap = await getDoc(sessionRef);
+    if (!sessionSnap.exists()) throw new Error("Session not found");
+
+    const session = sessionSnap.data() as GameSession;
+    const map = session.map || emptyMapState();
+    const scene = map.scenes[sceneId];
+    if (!scene) throw new Error("Scene not found");
+
+    const nextSpawnByTokenId = { ...(scene.spawnByTokenId || {}) };
+    delete nextSpawnByTokenId[tokenId];
+
+    map.scenes[sceneId] = {
+      ...scene,
+      spawnByTokenId: nextSpawnByTokenId,
+      updatedAt: Date.now(),
+    };
+
+    await touchSession(sessionRef, { map });
+  },
+
+  appendMapFogStroke: async (code: string, sceneId: string, stroke: MapFogStroke) => {
+    const sessionRef = doc(db, "sessions", code);
+    const sessionSnap = await getDoc(sessionRef);
+    if (!sessionSnap.exists()) throw new Error("Session not found");
+
+    const session = sessionSnap.data() as GameSession;
+    const map = session.map || emptyMapState();
+    const scene = map.scenes[sceneId];
+    if (!scene) throw new Error("Scene not found");
+
+    map.scenes[sceneId] = {
+      ...scene,
+      fogStrokes: [...(scene.fogStrokes || []), stroke],
+      updatedAt: Date.now(),
+    };
+
+    await touchSession(sessionRef, { map });
+  },
+
+  clearMapFogStrokes: async (code: string, sceneId: string) => {
+    const sessionRef = doc(db, "sessions", code);
+    const sessionSnap = await getDoc(sessionRef);
+    if (!sessionSnap.exists()) throw new Error("Session not found");
+
+    const session = sessionSnap.data() as GameSession;
+    const map = session.map || emptyMapState();
+    const scene = map.scenes[sceneId];
+    if (!scene) throw new Error("Scene not found");
+
+    map.scenes[sceneId] = {
+      ...scene,
+      fogStrokes: [],
+      updatedAt: Date.now(),
+    };
+
+    await touchSession(sessionRef, { map });
+  },
+
+  undoLastMapFogStroke: async (code: string, sceneId: string) => {
+    const sessionRef = doc(db, "sessions", code);
+    const sessionSnap = await getDoc(sessionRef);
+    if (!sessionSnap.exists()) throw new Error("Session not found");
+
+    const session = sessionSnap.data() as GameSession;
+    const map = session.map || emptyMapState();
+    const scene = map.scenes[sceneId];
+    if (!scene) throw new Error("Scene not found");
+
+    const fogStrokes = [...(scene.fogStrokes || [])];
+    if (fogStrokes.length === 0) return;
+    fogStrokes.pop();
+
+    map.scenes[sceneId] = {
+      ...scene,
+      fogStrokes,
+      updatedAt: Date.now(),
+    };
+
+    await touchSession(sessionRef, { map });
+  },
+
+  setAllSceneSpawnsFromCurrentTokens: async (code: string, sceneId: string) => {
+    const sessionRef = doc(db, "sessions", code);
+    const sessionSnap = await getDoc(sessionRef);
+    if (!sessionSnap.exists()) throw new Error("Session not found");
+
+    const session = sessionSnap.data() as GameSession;
+    const map = session.map || emptyMapState();
+    const scene = map.scenes[sceneId];
+    if (!scene) throw new Error("Scene not found");
+
+    const spawnByTokenId = Object.fromEntries(
+      Object.entries(scene.tokens || {}).map(([tokenId, token]) => [tokenId, token.position])
+    );
+
+    map.scenes[sceneId] = {
+      ...scene,
+      spawnByTokenId,
       updatedAt: Date.now(),
     };
 
